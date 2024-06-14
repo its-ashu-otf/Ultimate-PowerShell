@@ -118,9 +118,10 @@ catch {
 }
 # Installs
 try {
+    winget install fastfetch
     winget install -e --id Microsoft.PowerShell
     winget install -e --id ajeetdsouza.zoxide
-    Write-Host "zoxide installed successfully."
+    Write-Host "Dependencies installed successfully."
 }
 catch {
     Write-Error "Failed to install zoxide. Error: $_"
