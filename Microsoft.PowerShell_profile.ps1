@@ -69,6 +69,11 @@ function Update-PowerShell {
 }
 Update-PowerShell
 
+# Check if fastfetch is installed
+if (Get-Command fastfetch -ErrorAction SilentlyContinue) {
+    fastfetch
+}
+
 
 # Admin Check and Prompt Customization
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
@@ -352,7 +357,6 @@ pst - Retrieves text from the clipboard.
 Use 'Show-Help' to display this help message.
 "@
 }
-Write-Host "Use 'Show-Help' to display help"
 
 ## Final Line to set prompt
 oh-my-posh init pwsh --config https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/cobalt2.omp.json | Invoke-Expression
