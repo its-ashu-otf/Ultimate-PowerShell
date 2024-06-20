@@ -1,8 +1,14 @@
+
 # Ensure the script can run with elevated privileges
-if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
-    Write-Warning "Please run this script as an Administrator!"
-    break
+$isadmin =
+if ($IsWindows) {
+    ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
+elseif ($IsMacOS -or $IsLinux) {
+    $(whoami) -eq "root"
+}
+}
+if (!$isadmin) {
 
 # Function to test internet connectivity
 function Test-InternetConnection {
