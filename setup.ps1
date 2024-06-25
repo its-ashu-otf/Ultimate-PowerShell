@@ -8,7 +8,6 @@ elseif ($IsMacOS -or $IsLinux) {
     $(whoami) -eq "root"
 }
 }
-if (!$isadmin) {
 
 # Function to test internet connectivity
 function Test-InternetConnection {
