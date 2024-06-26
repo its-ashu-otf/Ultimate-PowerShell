@@ -120,7 +120,7 @@ catch {
 
 # PSCompletions Install
 try {
-    Install-Module PSCompletions -Scope CurrentUser
+    Install-Module -Name PSCompletions -Scope CurrentUser -Repository PSGallery -Force
 }
 catch {
     Write-Error "Failed to install PSCompletetions module. Error: $_"
