@@ -117,6 +117,24 @@ try {
 catch {
     Write-Error "Failed to install Terminal Icons module. Error: $_"
 }
+
+# PSCompletions Install
+try {
+    Install-Module PSCompletions -Scope CurrentUser
+}
+catch {
+    Write-Error "Failed to install PSCompletetions module. Error: $_"
+}
+
+# fastfetch install
+try {
+    winget install fastfetch
+    Wrie-Host "Fastfetch installed succesfully."
+}
+catch {
+    Write-Error "Failed to install fastfetch. Error: $_"
+}
+
 # zoxide Install
 try {
     winget install -e --id ajeetdsouza.zoxide
