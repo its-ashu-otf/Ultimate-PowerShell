@@ -128,8 +128,8 @@ catch {
 
 # fastfetch install
 try {
-    winget install fastfetch
-    Wrie-Host "Fastfetch installed succesfully."
+    winget install -e --id Fastfetch-cli.Fastfetch
+    Write-Host "Fastfetch installed succesfully."
 }
 catch {
     Write-Error "Failed to install fastfetch. Error: $_"
