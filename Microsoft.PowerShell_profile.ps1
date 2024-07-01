@@ -265,7 +265,7 @@ function gc { param($m) git commit -m "$m" }
 
 function gp { git push }
 
-function g { z Github }
+function g { __zoxide_z github }
 
 function gcl { git clone "$args" }
 
@@ -327,6 +327,32 @@ if (Get-Command zoxide -ErrorAction SilentlyContinue) {
         Write-Error "Failed to install zoxide. Error: $_"
     }
 }
+
+Set-Alias -Name z -Value __zoxide_z -Option AllScope -Scope Global -Force
+Set-Alias -Name zi -Value __zoxide_zi -Option AllScope -Scope Global -Force
+
+# Ctrl + f to accept next line & list the directories.
+
+$PSROptions = @{
+    ContinuationPrompt = '  '
+    Colors             = @{
+    Parameter          = $PSStyle.Foreground.Magenta
+    Selection          = $PSStyle.Background.Black
+    InLinePrediction   = $PSStyle.Foreground.BrightYellow + $PSStyle.Background.BrightBlack
+    }
+}
+Set-PSReadLineOption @PSROptions
+Set-PSReadLineKeyHandler -Chord 'Ctrl+f' -Function ForwardWord
+Set-PSReadLineKeyHandler -Chord 'Enter' -Function ValidateAndAcceptLine
+
+$scriptblock = {
+    param($wordToComplete, $commandAst, $cursorPosition)
+    dotnet complete --position $cursorPosition $commandAst.ToString() |
+        ForEach-Object {
+            [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
+        }
+}
+Register-ArgumentCompleter -Native -CommandName dotnet -ScriptBlock $scriptblock
 
 # Help Function
 function Show-Help {
