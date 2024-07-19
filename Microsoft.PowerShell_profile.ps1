@@ -22,7 +22,7 @@ if ([bool]([System.Security.Principal.WindowsIdentity]::GetCurrent()).IsSystem) 
 }
 
 # Initial GitHub.com connectivity check with 1 second timeout
-$canConnectToGitHub = Test-Connection github.com -Count 1 -Quiet -TimeoutSeconds 1
+$canConnectToGitHub = $null -ne (ping github.com -n 1 -w 1000 | Select-String "Reply from")
 
 # Import Modules and External Profiles
 # Ensure Terminal-Icons module is installed before importing
@@ -136,9 +136,14 @@ function ff($name) {
 # Network Utilities
 function Get-PubIP { (Invoke-WebRequest http://ifconfig.me/ip).Content }
 
-# Open WinUtil
+# Open WinUtil full-release
 function winutil {
-	iwr -useb https://christitus.com/win | iex
+	irm https://christitus.com/win | iex
+}
+
+# Open WinUtil pre-release
+function winutildev {
+	irm https://christitus.com/windev | iex
 }
 
 # System Utilities
@@ -249,6 +254,34 @@ function nf { param($name) New-Item -ItemType "file" -Path . -Name $name }
 # Directory Management
 function mkcd { param($dir) mkdir $dir -Force; Set-Location $dir }
 
+function trash($path) {
+    $fullPath = (Resolve-Path -Path $path).Path
+
+    if (Test-Path $fullPath) {
+        $item = Get-Item $fullPath
+
+        if ($item.PSIsContainer) {
+          # Handle directory
+            $parentPath = $item.Parent.FullName
+        } else {
+            # Handle file
+            $parentPath = $item.DirectoryName
+        }
+
+        $shell = New-Object -ComObject 'Shell.Application'
+        $shellItem = $shell.NameSpace($parentPath).ParseName($item.Name)
+
+        if ($item) {
+            $shellItem.InvokeVerb('delete')
+            Write-Host "Item '$fullPath' has been moved to the Recycle Bin."
+        } else {
+            Write-Host "Error: Could not find the item '$fullPath' to trash."
+        }
+    } else {
+        Write-Host "Error: Item '$fullPath' does not exist."
+    }
+}
+
 ### Quality of Life Aliases
 
 # Navigation Shortcuts
@@ -343,15 +376,18 @@ Set-Alias -Name zi -Value __zoxide_zi -Option AllScope -Scope Global -Force
 
 # Ctrl + f to accept next line & list the directories.
 
-$PSROptions = @{
-    ContinuationPrompt = '  '
-    Colors             = @{
-    Parameter          = $PSStyle.Foreground.Magenta
-    Selection          = $PSStyle.Background.Black
-    InLinePrediction   = $PSStyle.Foreground.BrightYellow + $PSStyle.Background.BrightBlack
+if ($PSVersionTable.PSVersion.Major -ge 7) {
+    $PSROptions = @{
+        ContinuationPrompt = '  '
+        Colors             = @{
+            Parameter          = $PSStyle.Foreground.Magenta
+            Selection          = $PSStyle.Background.Black
+            InLinePrediction   = $PSStyle.Foreground.BrightYellow + $PSStyle.Background.BrightBlack
+        }
     }
+    Set-PSReadLineOption @PSROptions
 }
-Set-PSReadLineOption @PSROptions
+
 Set-PSReadLineKeyHandler -Chord 'Ctrl+f' -Function ForwardWord
 Set-PSReadLineKeyHandler -Chord 'Enter' -Function ValidateAndAcceptLine
 
@@ -382,7 +418,9 @@ ff <name> - Finds files recursively with the specified name.
 
 Get-PubIP - Retrieves the public IP address of the machine.
 
-winutil - Runs the WinUtil script from Chris Titus Tech.
+winutil - Runs the latest WinUtil full-release script from Chris Titus Tech.
+
+winutildev - Runs the latest WinUtil pre-release script from Chris Titus Tech.
 
 uptime - Displays the system uptime.
 
