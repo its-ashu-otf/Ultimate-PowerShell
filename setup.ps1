@@ -104,12 +104,12 @@ function Install-NerdFonts {
 }
 
 # Font Install
-Install-NerdFonts -FontName "CascadiaCode" -FontDisplayName "CaskaydiaCove NF"
+Install-NerdFonts -FontName "CascadiaMono" -FontDisplayName "CaskaydiaMono NF"
 
 # Final check and message to the user
 try {
     $fontFamilies = (New-Object System.Drawing.Text.InstalledFontCollection).Families | ForEach-Object { $_.Name }
-    if ((Test-Path -Path $PROFILE) -and (winget list --name "OhMyPosh" -e) -and ($fontFamilies -contains "CaskaydiaCove NF")) {
+    if ((Test-Path -Path $PROFILE) -and (winget list --name "OhMyPosh" -e) -and ($fontFamilies -contains "CaskaydiaMono NF")) {
         Write-Host "Setup completed successfully. Please restart your PowerShell session to apply changes."
     } else {
         Write-Warning "Setup completed with errors. Please check the error messages above."
