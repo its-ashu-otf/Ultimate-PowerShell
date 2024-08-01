@@ -15,7 +15,7 @@ irm "https://github.com/its-ashu-otf/powershell-profile/raw/main/setup.ps1" | ie
 
 After running the script, you'll have two options for installing a font patched to support icons in PowerShell:
 
-### 1) You will find a downloaded `cove.zip` file in the folder you executed the script from. Follow these steps to install the patched `Caskaydia Cove` nerd font family:
+### 1) You will find a downloaded `cove.zip` file in the folder you executed the script from. Follow these steps to install the patched `Caskadia Mono` nerd font family:
 
 1. Extract the `cove.zip` file.
 2. Locate and install the nerd fonts.
