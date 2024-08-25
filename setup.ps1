@@ -157,6 +157,7 @@ catch {
 # Linux Tools Install
 try {
     winget install -e --id ajeetdsouza.zoxide
+    winget install -e --id junegunn.fzf
     winget install -e --id cURL.cURL
     winget install -e --id sharkdp.bat 
     winget install -e --id GNU.Wget2    
