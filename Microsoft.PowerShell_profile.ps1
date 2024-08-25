@@ -162,7 +162,7 @@ Set-Alias -Name su -Value admin
 # Set UNIX-Like aliases 
 Set-Alias -Name cat -Value bat
 Set-Alias -Name ifconfig -Value ipconfig
-Set-Alias -Name wsl nano -Value nano
+Set-Alias -Name nano -Value wsl nano
 
 function uptime {
     if ($PSVersionTable.PSVersion.Major -eq 5) {
