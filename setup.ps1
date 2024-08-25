@@ -154,11 +154,14 @@ catch {
     Write-Error "Failed to install fastfetch. Error: $_"
 }
 
-# zoxide Install
+# Linux Tools Install
 try {
     winget install -e --id ajeetdsouza.zoxide
-    Write-Host "zoxide installed successfully."
+    winget install -e --id cURL.cURL
+    winget install -e --id sharkdp.bat 
+    winget install -e --id GNU.Wget2    
+    Write-Host "Linux tools installed successfully."
 }
 catch {
-    Write-Error "Failed to install zoxide. Error: $_"
+    Write-Error "Failed to install Linux tools. Error: $_"
 }
