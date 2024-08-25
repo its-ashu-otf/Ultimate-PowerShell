@@ -162,6 +162,8 @@ Set-Alias -Name su -Value admin
 # Set UNIX-Like aliases 
 Set-Alias -Name cat -Value bat
 Set-Alias -Name ifconfig -Value ipconfig
+Set-Alias -Name wget -Value wget2
+
 
 function uptime {
     if ($PSVersionTable.PSVersion.Major -eq 5) {
