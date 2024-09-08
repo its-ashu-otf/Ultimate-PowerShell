@@ -6,7 +6,7 @@ Linux terminal experience on windows.
 
 Execute the following command in an elevated PowerShell window to install the PowerShell profile:
 
-```
+```powershell
 irm "https://github.com/its-ashu-otf/powershell-profile/raw/main/setup.ps1" | iex
 ```
 
