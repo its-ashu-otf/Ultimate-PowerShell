@@ -21,6 +21,9 @@ if ([bool]([System.Security.Principal.WindowsIdentity]::GetCurrent()).IsSystem) 
     [System.Environment]::SetEnvironmentVariable('POWERSHELL_TELEMETRY_OPTOUT', 'true', [System.EnvironmentVariableTarget]::Machine)
 }
 
+# Import Modules
+Import-Module -Name Microsoft.WinGet.CommandNotFound
+
 # Initial GitHub.com connectivity check with 1 second timeout
 $canConnectToGitHub = $null -ne (ping github.com -n 1 -w 1000 | Select-String "Reply from")
 
