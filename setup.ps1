@@ -119,16 +119,6 @@ catch {
     Write-Error "Failed during final check. Error: $_"
 }
 
-# Choco install
-try {
-    Set-ExecutionPolicy Bypass -Scope Process -Force
-    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
-    iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
-}
-catch {
-    Write-Error "Failed to install Chocolatey. Error: $_"
-}
-
 # Terminal Icons Install
 try {
     Install-Module -Name Terminal-Icons -Repository PSGallery -Force
