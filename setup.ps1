@@ -135,6 +135,14 @@ catch {
     Write-Error "Failed to install PSCompletions module. Error: $_"
 }
 
+# WinGet CommandNotFound Install
+try {
+    Install-Module -Name Microsoft.WinGet.CommandNotFound -Scope CurrentUser -Repository PSGallery -Force
+}
+catch {
+    Write-Error "Failed to install WinGet.CommandNotFound module. Error: $_"
+}
+
 # fastfetch install
 try {
     winget install -e --id Fastfetch-cli.Fastfetch
