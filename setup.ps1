@@ -130,7 +130,6 @@ catch {
 # PSCompletions Install
 try {
     Install-Module -Name PSCompletions -Scope CurrentUser -Repository PSGallery -Force
-    psc add dircolors dirname python  git pip  powershell pwsh python winget wsl cksum arch b2sum b3sum base32 base64 basename
 }
 catch {
     Write-Error "Failed to install PSCompletions module. Error: $_"
