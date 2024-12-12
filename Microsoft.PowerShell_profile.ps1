@@ -1,5 +1,19 @@
 ### PowerShell Profile
-### Version 1.06
+### Version 1.07
+$debug = $false
+
+if ($debug) {
+    Write-Host "#######################################" -ForegroundColor Red
+    Write-Host "#           Debug mode enabled        #" -ForegroundColor Red
+    Write-Host "#          ONLY FOR DEVELOPMENT       #" -ForegroundColor Red
+    Write-Host "#                                     #" -ForegroundColor Red
+    Write-Host "#       IF YOU ARE NOT DEVELOPING     #" -ForegroundColor Red
+    Write-Host "#       JUST RUN \`Update-Profile\`     #" -ForegroundColor Red
+    Write-Host "#        to discard all changes       #" -ForegroundColor Red
+    Write-Host "#   and update to the latest profile  #" -ForegroundColor Red
+    Write-Host "#               version               #" -ForegroundColor Red
+    Write-Host "#######################################" -ForegroundColor Red
+}
 
 #################################################################################################################################
 ############                                                                                                         ############
@@ -25,7 +39,7 @@ if ([bool]([System.Security.Principal.WindowsIdentity]::GetCurrent()).IsSystem) 
 Import-Module -Name Microsoft.WinGet.CommandNotFound
 
 # Initial GitHub.com connectivity check with 1 second timeout
-$canConnectToGitHub = $null -ne (ping github.com -n 1 -w 1000 | Select-String "Reply from")
+$global:canConnectToGitHub = Test-Connection github.com -Count 1 -Quiet -TimeoutSeconds 1
 
 # Import Modules and External Profiles
 # Ensure Terminal-Icons module is installed before importing
@@ -47,34 +61,32 @@ if (Test-Path($ChocolateyProfile)) {
 
 # Check for Profile Updates
 function Update-Profile {
-    if (-not $global:canConnectToGitHub) {
-        Write-Host "Skipping profile update check due to GitHub.com not responding within 1 second." -ForegroundColor Yellow
-        return
-    }
-
     try {
-        $url = "https://raw.githubusercontent.com/its-ashu-otf/powershell-profile/main/Microsoft.PowerShell_profile.ps1"
+        $url = "https://raw.githubusercontent.com/ChrisTitusTech/powershell-profile/main/Microsoft.PowerShell_profile.ps1"
         $oldhash = Get-FileHash $PROFILE
         Invoke-RestMethod $url -OutFile "$env:temp/Microsoft.PowerShell_profile.ps1"
         $newhash = Get-FileHash "$env:temp/Microsoft.PowerShell_profile.ps1"
         if ($newhash.Hash -ne $oldhash.Hash) {
             Copy-Item -Path "$env:temp/Microsoft.PowerShell_profile.ps1" -Destination $PROFILE -Force
             Write-Host "Profile has been updated. Please restart your shell to reflect changes" -ForegroundColor Magenta
+        } else {
+            Write-Host "Profile is up to date." -ForegroundColor Green
         }
     } catch {
-        Write-Error "Unable to check for `$profile updates"
+        Write-Error "Unable to check for `$profile updates: $_"
     } finally {
         Remove-Item "$env:temp/Microsoft.PowerShell_profile.ps1" -ErrorAction SilentlyContinue
     }
 }
-Update-Profile
+
+# skip in debug mode
+if (-not $debug) {
+    Update-Profile
+} else {
+    Write-Warning "Skipping profile update check in debug mode"
+}
 
 function Update-PowerShell {
-    if (-not $global:canConnectToGitHub) {
-        Write-Host "Skipping PowerShell update check due to GitHub.com not responding within 1 second." -ForegroundColor Yellow
-        return
-    }
-
     try {
         Write-Host "Checking for PowerShell updates..." -ForegroundColor Cyan
         $updateNeeded = $false
@@ -88,7 +100,7 @@ function Update-PowerShell {
 
         if ($updateNeeded) {
             Write-Host "Updating PowerShell..." -ForegroundColor Yellow
-            winget upgrade "Microsoft.PowerShell" --accept-source-agreements --accept-package-agreements
+            Start-Process powershell.exe -ArgumentList "-NoProfile -Command winget upgrade Microsoft.PowerShell --accept-source-agreements --accept-package-agreements" -Wait -NoNewWindow
             Write-Host "PowerShell has been updated. Please restart your shell to reflect changes" -ForegroundColor Magenta
         } else {
             Write-Host "Your PowerShell is up to date." -ForegroundColor Green
@@ -97,7 +109,36 @@ function Update-PowerShell {
         Write-Error "Failed to update PowerShell. Error: $_"
     }
 }
-Update-PowerShell
+
+# skip in debug mode
+if (-not $debug) {
+    Update-PowerShell
+} else {
+    Write-Warning "Skipping PowerShell update in debug mode"
+}
+
+function Clear-Cache {
+    # add clear cache logic here
+    Write-Host "Clearing cache..." -ForegroundColor Cyan
+
+    # Clear Windows Prefetch
+    Write-Host "Clearing Windows Prefetch..." -ForegroundColor Yellow
+    Remove-Item -Path "$env:SystemRoot\Prefetch\*" -Force -ErrorAction SilentlyContinue
+
+    # Clear Windows Temp
+    Write-Host "Clearing Windows Temp..." -ForegroundColor Yellow
+    Remove-Item -Path "$env:SystemRoot\Temp\*" -Recurse -Force -ErrorAction SilentlyContinue
+
+    # Clear User Temp
+    Write-Host "Clearing User Temp..." -ForegroundColor Yellow
+    Remove-Item -Path "$env:TEMP\*" -Recurse -Force -ErrorAction SilentlyContinue
+
+    # Clear Internet Explorer Cache
+    Write-Host "Clearing Internet Explorer Cache..." -ForegroundColor Yellow
+    Remove-Item -Path "$env:LOCALAPPDATA\Microsoft\Windows\INetCache\*" -Recurse -Force -ErrorAction SilentlyContinue
+
+    Write-Host "Cache clearing completed." -ForegroundColor Green
+}
 
 
 # Admin Check and Prompt Customization
