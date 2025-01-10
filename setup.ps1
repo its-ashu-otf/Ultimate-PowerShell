@@ -143,21 +143,15 @@ catch {
     Write-Error "Failed to install WinGet.CommandNotFound module. Error: $_"
 }
 
-# fastfetch install
-try {
-    winget install -e --id Fastfetch-cli.Fastfetch
-    Write-Host "Fastfetch installed successfully."
-}
-catch {
-    Write-Error "Failed to install fastfetch. Error: $_"
-}
 
 # Linux Tools Install
 try {
+    winget install -e --id Fastfetch-cli.Fastfetch
     winget install -e --id ajeetdsouza.zoxide
     winget install -e --id junegunn.fzf
     winget install -e --id cURL.cURL
     winget install -e --id sharkdp.bat 
+    winget install -e --id Git.Git
     winget install -e --id GNU.Wget2    
     Write-Host "Linux tools installed successfully."
 }
