@@ -166,6 +166,9 @@ $EDITOR = if (Test-CommandExists nvim) { 'nvim' }
           else { 'notepad' }
 Set-Alias -Name vim -Value $EDITOR
 
+# Addition of Nano using GIT
+Set-Alias nano C:\Progra~1\Git\usr\bin\nano.exe
+
 # Quick Access to Editing the Profile
 function Edit-Profile {
     vim $PROFILE.CurrentUserAllHosts
