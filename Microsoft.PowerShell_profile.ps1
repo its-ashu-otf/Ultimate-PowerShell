@@ -93,7 +93,7 @@ function Update-Profile {
             Copy-Item -Path "$env:temp/Microsoft.PowerShell_profile.ps1" -Destination $PROFILE -Force
             Write-Host "Profile has been updated. Please restart your shell to reflect changes" -ForegroundColor Magenta
         } else {
-            Write-Host "Profile is up to date." -ForegroundColor Green
+            Write-Host "Profile is up to date." -ForegroundColor Yellow
         }
     } catch {
         Write-Error "Unable to check for `$profile updates: $_"
@@ -102,23 +102,12 @@ function Update-Profile {
     }
 }
 
-# Check if not in debug mode AND (updateInterval is -1 OR file doesn't exist OR time difference is greater than the update interval)
-if (-not $debug -and `
-    ($updateInterval -eq -1 -or `
-     -not (Test-Path $timeFilePath) -or `
-     ((Get-Date).Date - [datetime]::ParseExact((Get-Content -Path $timeFilePath), 'yyyy-MM-dd', $null).Date).TotalDays -gt $updateInterval)) {
-    
-    # Call the update function if condition is met
-    Update-PowerShell
-    
-    # Store the current date to the file
-    $currentTime = Get-Date -Format 'yyyy-MM-dd'
-    $currentTime | Out-File -FilePath $timeFilePath -Force
-} 
-else {
-    Write-Warning "Skipping PowerShell update in debug mode"
+# skip in debug mode
+if (-not $debug) {
+    Update-Profile
+} else {
+    Write-Warning "Skipping profile update check in debug mode"
 }
-
 
 function Update-PowerShell {
     try {
@@ -137,27 +126,17 @@ function Update-PowerShell {
             Start-Process powershell.exe -ArgumentList "-NoProfile -Command winget upgrade Microsoft.PowerShell --accept-source-agreements --accept-package-agreements" -Wait -NoNewWindow
             Write-Host "PowerShell has been updated. Please restart your shell to reflect changes" -ForegroundColor Magenta
         } else {
-            Write-Host "Your PowerShell is up to date." -ForegroundColor Green
+            Write-Host "Your PowerShell is up to date." -ForegroundColor DarkGray
         }
     } catch {
         Write-Error "Failed to update PowerShell. Error: $_"
     }
 }
 
-# Check if not in debug mode AND (updateInterval is -1 OR file doesn't exist OR time difference is greater than the update interval)
-if (-not $debug -and `
-    ($updateInterval -eq -1 -or `
-     -not (Test-Path $timeFilePath) -or `
-     ((Get-Date).Date - [datetime]::ParseExact((Get-Content -Path $timeFilePath), 'yyyy-MM-dd', $null).Date).TotalDays -gt $updateInterval)) {
-    
-    # Call the update function if condition is met
+# skip in debug mode
+if (-not $debug) {
     Update-PowerShell
-    
-    # Store the current date to the file
-    $currentTime = Get-Date -Format 'yyyy-MM-dd'
-    $currentTime | Out-File -FilePath $timeFilePath -Force
-} 
-else {
+} else {
     Write-Warning "Skipping PowerShell update in debug mode"
 }
 
