@@ -102,15 +102,24 @@ function Update-Profile {
     }
 }
 
-# skip in debug mode
-if (-not $debug -and ((-not (Test-Path $timeFilePath)) -or ((Get-Date) - [datetime]::ParseExact((Get-Content -Path $timeFilePath), 'yyyy-MM-dd HH:mm:ss', $null)).TotalDays -gt $updateInterval)) {
-    Update-Profile
-    $currentTime = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
-    $currentTime | Out-File -FilePath $timeFilePath
-} elseif (-not $debug) {
-        Write-Warning "Profile update skipped. Last update was within the last 7 days."
-} else {
-    Write-Warning "Skipping profile update check in debug mode"
+# Check if not in debug mode AND (updateInterval is -1 OR file doesn't exist OR time difference is greater than the update interval)
+if (-not $debug -and `
+    ($updateInterval -eq -1 -or `
+     -not (Test-Path $timeFilePath) -or `
+     ((Get-Date).Date - [datetime]::ParseExact((Get-Content -Path $timeFilePath), 'yyyy-MM-dd', $null).Date).TotalDays -gt $updateInterval)) {
+    
+    # Call the update function if condition is met
+    Update-PowerShell
+    
+    # Store the current date to the file
+    $currentTime = Get-Date -Format 'yyyy-MM-dd'
+    $currentTime | Out-File -FilePath $timeFilePath -Force
+} 
+elseif (-not $debug) {
+    Write-Warning "PowerShell update skipped. Last update check was within the last $updateInterval day(s)."
+} 
+else {
+    Write-Warning "Skipping PowerShell update in debug mode"
 }
 
 
@@ -157,7 +166,6 @@ elseif (-not $debug) {
 else {
     Write-Warning "Skipping PowerShell update in debug mode"
 }
-
 
 function Clear-Cache {
     # add clear cache logic here
