@@ -2,6 +2,11 @@
 ### Version 1.07
 $debug = $false
 
+# Define the path to the file that stores the last execution time
+$timeFilePath = "$env:USERPROFILE\Documents\PowerShell\LastExecutionTime.txt"
+# Define the update interval in days, set to -1 to always check
+$updateInterval = 7
+
 if ($debug) {
     Write-Host "#######################################" -ForegroundColor Red
     Write-Host "#           Debug mode enabled        #" -ForegroundColor Red
@@ -59,6 +64,24 @@ if (Test-Path($ChocolateyProfile)) {
     Import-Module "$ChocolateyProfile"
 }
 
+function Greet-User {
+    $username = $env:USERNAME
+    $hour = (Get-Date).Hour
+
+    if ($hour -lt 12) {
+        $greeting = "Good Morning"
+    } elseif ($hour -lt 18) {
+        $greeting = "Good Afternoon"
+    } else {
+        $greeting = "Good Evening"
+    }
+
+    Write-Host "$greeting, $username! Welcome to Ultimate PowerShell !" -ForegroundColor White
+}
+
+Greet-User
+
+
 # Check for Profile Updates
 function Update-Profile {
     try {
@@ -80,11 +103,16 @@ function Update-Profile {
 }
 
 # skip in debug mode
-if (-not $debug) {
+if (-not $debug -and ((-not (Test-Path $timeFilePath)) -or ((Get-Date) - [datetime]::ParseExact((Get-Content -Path $timeFilePath), 'yyyy-MM-dd HH:mm:ss', $null)).TotalDays -gt $updateInterval)) {
     Update-Profile
+    $currentTime = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+    $currentTime | Out-File -FilePath $timeFilePath
+} elseif (-not $debug) {
+        Write-Warning "Profile update skipped. Last update was within the last 7 days."
 } else {
     Write-Warning "Skipping profile update check in debug mode"
 }
+
 
 function Update-PowerShell {
     try {
@@ -111,9 +139,18 @@ function Update-PowerShell {
 }
 
 # skip in debug mode
-if (-not $debug) {
+# Check if not in debug mode AND (updateInterval is -1 OR file doesn't exist OR time difference is greater than the update interval)
+if (-not $debug -and `
+    ($updateInterval -eq -1 -or `
+     -not (Test-Path $timeFilePath) -or `
+     ((Get-Date).Date - [datetime]::ParseExact((Get-Content -Path $timeFilePath), 'yyyy-MM-dd', $null).Date).TotalDays -gt $updateInterval)) {
     Update-PowerShell
-} else {
+    $currentTime = Get-Date -Format 'yyyy-MM-dd'
+    $currentTime | Out-File -FilePath $timeFilePath
+} 
+elseif (-not $debug) {
+    Write-Warning "PowerShell update skipped. Last update check was within the last $updateInterval day(s)."} 
+else {
     Write-Warning "Skipping PowerShell update in debug mode"
 }
 
@@ -519,9 +556,9 @@ function Get-Theme {
             Invoke-Expression $existingTheme
             return
         }
-        oh-my-posh init pwsh --config https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/cobalt2.omp.json | Invoke-Expression
+        oh-my-posh init pwsh --config $env:POSH_THEMES_PATH\hul10.omp.json | Invoke-Expression
     } else {
-        oh-my-posh init pwsh --config https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/cobalt2.omp.json | Invoke-Expression
+        oh-my-posh init pwsh --config $env:POSH_THEMES_PATH\hul10.omp.json | Invoke-Expression
     }
 }
 
