@@ -131,28 +131,33 @@ function Update-PowerShell {
             Start-Process powershell.exe -ArgumentList "-NoProfile -Command winget upgrade Microsoft.PowerShell --accept-source-agreements --accept-package-agreements" -Wait -NoNewWindow
             Write-Host "PowerShell has been updated. Please restart your shell to reflect changes" -ForegroundColor Magenta
         } else {
-            Write-Host "Your PowerShell is up to date." -ForegroundColor Green
+            Write-Host "Your PowerShell is up to date." -ForegroundColor DarkGray
         }
     } catch {
         Write-Error "Failed to update PowerShell. Error: $_"
     }
 }
 
-# skip in debug mode
 # Check if not in debug mode AND (updateInterval is -1 OR file doesn't exist OR time difference is greater than the update interval)
 if (-not $debug -and `
     ($updateInterval -eq -1 -or `
      -not (Test-Path $timeFilePath) -or `
      ((Get-Date).Date - [datetime]::ParseExact((Get-Content -Path $timeFilePath), 'yyyy-MM-dd', $null).Date).TotalDays -gt $updateInterval)) {
+    
+    # Call the update function if condition is met
     Update-PowerShell
+    
+    # Store the current date to the file
     $currentTime = Get-Date -Format 'yyyy-MM-dd'
-    $currentTime | Out-File -FilePath $timeFilePath
+    $currentTime | Out-File -FilePath $timeFilePath -Force
 } 
 elseif (-not $debug) {
-    Write-Warning "PowerShell update skipped. Last update check was within the last $updateInterval day(s)."} 
+    Write-Warning "PowerShell update skipped. Last update check was within the last $updateInterval day(s)."
+} 
 else {
     Write-Warning "Skipping PowerShell update in debug mode"
 }
+
 
 function Clear-Cache {
     # add clear cache logic here
