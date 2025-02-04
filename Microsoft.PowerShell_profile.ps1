@@ -115,9 +115,6 @@ if (-not $debug -and `
     $currentTime = Get-Date -Format 'yyyy-MM-dd'
     $currentTime | Out-File -FilePath $timeFilePath -Force
 } 
-elseif (-not $debug) {
-    Write-Warning "PowerShell update skipped. Last update check was within the last $updateInterval day(s)."
-} 
 else {
     Write-Warning "Skipping PowerShell update in debug mode"
 }
@@ -159,9 +156,6 @@ if (-not $debug -and `
     # Store the current date to the file
     $currentTime = Get-Date -Format 'yyyy-MM-dd'
     $currentTime | Out-File -FilePath $timeFilePath -Force
-} 
-elseif (-not $debug) {
-    Write-Warning "PowerShell update skipped. Last update check was within the last $updateInterval day(s)."
 } 
 else {
     Write-Warning "Skipping PowerShell update in debug mode"
