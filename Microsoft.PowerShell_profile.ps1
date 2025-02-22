@@ -73,7 +73,6 @@ function Greet-User {
     if (-not $username) { $username = "User" }
 
     $hour = (Get-Date).Hour
-    $currentTime = Get-Date -Format "hh:mm tt"
     
     # Determine greeting based on the time
     $greeting = switch ($hour) {
@@ -84,12 +83,12 @@ function Greet-User {
         default { "Good Night" }
     }
 
-    Write-Host "$greeting, $username! Welcome to Ultimate PowerShell!" -ForegroundColor Cyan
-    Write-Host "Current Time: $currentTime" -ForegroundColor Yellow
+    Write-Host "$greeting, $username! Welcome to Ultimate PowerShell!" -ForegroundColor White
 }
 
 # Call function
 Greet-User
+
 
 # Check for Profile Updates
 function Update-Profile {
