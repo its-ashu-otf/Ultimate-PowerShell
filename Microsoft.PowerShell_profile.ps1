@@ -74,14 +74,12 @@ function Greet-User {
 
     $hour = (Get-Date).Hour
     
-    # Determine greeting based on the time
-    $greeting = switch ($hour) {
-        {$_ -lt 6} { "Good Night" }
-        {$_ -lt 12} { "Good Morning" }
-        {$_ -lt 18} { "Good Afternoon" }
-        {$_ -lt 22} { "Good Evening" }
-        default { "Good Night" }
-    }
+    # Determine the correct greeting based on time
+    $greeting = if ($hour -lt 6) { "Good Night" }
+    elseif ($hour -lt 12) { "Good Morning" }
+    elseif ($hour -lt 18) { "Good Afternoon" }
+    elseif ($hour -lt 22) { "Good Evening" }
+    else { "Good Night" }
 
     Write-Host "$greeting, $username! Welcome to Ultimate PowerShell!" -ForegroundColor White
 }
