@@ -65,22 +65,31 @@ if (Test-Path($ChocolateyProfile)) {
 }
 
 function Greet-User {
-    $username = $env:USERNAME
-    $hour = (Get-Date).Hour
+    param (
+        [string]$CustomUser
+    )
 
-    if ($hour -lt 12) {
-        $greeting = "Good Morning"
-    } elseif ($hour -lt 18) {
-        $greeting = "Good Afternoon"
-    } else {
-        $greeting = "Good Evening"
+    $username = if ($CustomUser) { $CustomUser } else { $env:USERNAME }
+    if (-not $username) { $username = "User" }
+
+    $hour = (Get-Date).Hour
+    $currentTime = Get-Date -Format "hh:mm tt"
+    
+    # Determine greeting based on the time
+    $greeting = switch ($hour) {
+        {$_ -lt 6} { "Good Night" }
+        {$_ -lt 12} { "Good Morning" }
+        {$_ -lt 18} { "Good Afternoon" }
+        {$_ -lt 22} { "Good Evening" }
+        default { "Good Night" }
     }
 
-    Write-Host "$greeting, $username! Welcome to Ultimate PowerShell !" -ForegroundColor White
+    Write-Host "$greeting, $username! Welcome to Ultimate PowerShell!" -ForegroundColor Cyan
+    Write-Host "Current Time: $currentTime" -ForegroundColor Yellow
 }
 
+# Call function
 Greet-User
-
 
 # Check for Profile Updates
 function Update-Profile {
