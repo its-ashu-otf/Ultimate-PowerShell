@@ -1,5 +1,5 @@
 ### PowerShell Profile
-### Version 1.07
+### Version 2.00
 $debug = $false
 
 # Define the path to the file that stores the last execution time
