@@ -13,7 +13,7 @@ if ($debug) {
     Write-Host "#          ONLY FOR DEVELOPMENT       #" -ForegroundColor Red
     Write-Host "#                                     #" -ForegroundColor Red
     Write-Host "#       IF YOU ARE NOT DEVELOPING     #" -ForegroundColor Red
-    Write-Host "#       JUST RUN \`Update-Profile\`     #" -ForegroundColor Red
+    Write-Host "#       JUST RUN `Update-Profile`     #" -ForegroundColor Red
     Write-Host "#        to discard all changes       #" -ForegroundColor Red
     Write-Host "#   and update to the latest profile  #" -ForegroundColor Red
     Write-Host "#               version               #" -ForegroundColor Red
@@ -26,16 +26,13 @@ if ($debug) {
 ############                                                                                                         ############
 ############                DO NOT MODIFY THIS FILE. THIS FILE IS HASHED AND UPDATED AUTOMATICALLY.                  ############
 ############                    ANY CHANGES MADE TO THIS FILE WILL BE OVERWRITTEN BY COMMITS TO                      ############
-############                       							                             ############
-############                                                                                                         ############
-#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!#
-############                                                                                                         ############
+############                                                                                                                                                 ############
 ############                      IF YOU WANT TO MAKE CHANGES, USE THE Edit-Profile FUNCTION                         ############
 ############                              AND SAVE YOUR CHANGES IN THE FILE CREATED.                                 ############
 ############                                                                                                         ############
 #################################################################################################################################
 
-#opt-out of telemetry before doing anything, only if PowerShell is run as admin
+# Opt-out of telemetry before doing anything, only if PowerShell is run as admin
 if ([bool]([System.Security.Principal.WindowsIdentity]::GetCurrent()).IsSystem) {
     [System.Environment]::SetEnvironmentVariable('POWERSHELL_TELEMETRY_OPTOUT', 'true', [System.EnvironmentVariableTarget]::Machine)
 }
@@ -51,7 +48,7 @@ if (-not (Get-Module -ListAvailable -Name Terminal-Icons)) {
 Import-Module -Name Terminal-Icons
 
 # Ensure PSCompletions module is installed before importing
-if (-not (Get-Module -ListAvailable -Name Terminal-Icons)) {
+if (-not (Get-Module -ListAvailable -Name PSCompletions)) {
     Install-Module PSCompletions -Scope CurrentUser -Force -SkipPublisherCheck
 }
 Import-Module PSCompletions
@@ -84,7 +81,6 @@ function Greet-User {
 # Call function
 Greet-User
 
-
 # Check for Profile Updates
 function Update-Profile {
     try {
@@ -99,13 +95,13 @@ function Update-Profile {
             Write-Host "Profile is up to date." -ForegroundColor Yellow
         }
     } catch {
-        Write-Error "Unable to check for `$profile updates: $_"
+        Write-Error "Unable to check for profile updates: $_"
     } finally {
         Remove-Item "$env:temp/Microsoft.PowerShell_profile.ps1" -ErrorAction SilentlyContinue
     }
 }
 
-# skip in debug mode
+# Skip in debug mode
 if (-not $debug) {
     Update-Profile
 } else {
@@ -136,7 +132,7 @@ function Update-PowerShell {
     }
 }
 
-# skip in debug mode
+# Skip in debug mode
 if (-not $debug) {
     Update-PowerShell
 } else {
@@ -144,7 +140,7 @@ if (-not $debug) {
 }
 
 function Clear-Cache {
-    # add clear cache logic here
+    # Add clear cache logic here
     Write-Host "Clearing cache..." -ForegroundColor Cyan
 
     # Clear Windows Prefetch
@@ -165,7 +161,6 @@ function Clear-Cache {
 
     Write-Host "Cache clearing completed." -ForegroundColor Green
 }
-
 
 # Admin Check and Prompt Customization
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
@@ -239,16 +234,15 @@ Set-Alias -Name cat -Value bat
 Set-Alias -Name ifconfig -Value ipconfig
 Set-Alias -Name wget -Value wget2
 
-
 function uptime {
     try {
-        # check powershell version
+        # Check PowerShell version
         if ($PSVersionTable.PSVersion.Major -eq 5) {
             $lastBoot = (Get-WmiObject win32_operatingsystem).LastBootUpTime
             $bootTime = [System.Management.ManagementDateTimeConverter]::ToDateTime($lastBoot)
         } else {
             $lastBootStr = net statistics workstation | Select-String "since" | ForEach-Object { $_.ToString().Replace('Statistics since ', '') }
-            # check date format
+            # Check date format
             if ($lastBootStr -match '^\d{2}/\d{2}/\d{4}') {
                 $dateFormat = 'dd/MM/yyyy'
             } elseif ($lastBootStr -match '^\d{2}-\d{2}-\d{4}') {
@@ -261,7 +255,7 @@ function uptime {
                 $dateFormat = 'dd.MM.yyyy'
             }
             
-            # check time format
+            # Check time format
             if ($lastBootStr -match '\bAM\b' -or $lastBootStr -match '\bPM\b') {
                 $timeFormat = 'h:mm:ss tt'
             } else {
@@ -272,11 +266,10 @@ function uptime {
         }
 
         # Format the start time
-        ### $formattedBootTime = $bootTime.ToString("dddd, MMMM dd, yyyy HH:mm:ss", [System.Globalization.CultureInfo]::InvariantCulture)
         $formattedBootTime = $bootTime.ToString("dddd, MMMM dd, yyyy HH:mm:ss", [System.Globalization.CultureInfo]::InvariantCulture) + " [$lastBootStr]"
         Write-Host "System started on: $formattedBootTime" -ForegroundColor DarkGray
 
-        # calculate uptime
+        # Calculate uptime
         $uptime = (Get-Date) - $bootTime
 
         # Uptime in days, hours, minutes, and seconds
@@ -293,7 +286,6 @@ function uptime {
         Write-Error "An error occurred while retrieving system uptime."
     }
 }
-
 
 function reload-profile {
     & $profile
@@ -535,7 +527,6 @@ $scriptblock = {
         }
 }
 Register-ArgumentCompleter -Native -CommandName dotnet -ScriptBlock $scriptblock
-
 
 # Get theme from profile.ps1 or use a default theme
 function Get-Theme {

@@ -47,9 +47,9 @@ if (!(Test-Path -Path $PROFILE -PathType Leaf)) {
 }
 else {
     try {
-        Move-Item -Path $PROFILE -Destination "oldprofile.ps1" -Force
+        Move-Item -Path $PROFILE -Destination "$PROFILE.old" -Force
         Invoke-RestMethod -Uri "https://github.com/its-ashu-otf/powershell-profile/raw/main/Microsoft.PowerShell_profile.ps1" -OutFile $PROFILE
-        Write-Host "The profile @ [$PROFILE] has been created and old profile removed."
+        Write-Host "The profile @ [$PROFILE] has been updated and the old profile has been backed up."
         Write-Host "Please back up any persistent components of your old profile to [$HOME\Documents\PowerShell\Profile.ps1] as there is an updater in the installed profile which uses the hash to update the profile and will lead to loss of changes."
     }
     catch {
@@ -73,7 +73,7 @@ function Install-NerdFonts {
     )
 
     try {
-        [void] [System.Reflection.Assembly]::LoadWithPartialName("System.Drawing")
+        Add-Type -AssemblyName System.Drawing
         $fontFamilies = (New-Object System.Drawing.Text.InstalledFontCollection).Families | ForEach-Object { $_.Name }
         if ($fontFamilies -notcontains $FontDisplayName) {
             $fontZipUrl = "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/${FontName}.zip"
@@ -108,6 +108,7 @@ Install-NerdFonts -FontName "CascadiaMono" -FontDisplayName "CaskaydiaMono NF"
 
 # Final check and message to the user
 try {
+    Add-Type -AssemblyName System.Drawing
     $fontFamilies = (New-Object System.Drawing.Text.InstalledFontCollection).Families | ForEach-Object { $_.Name }
     if ((Test-Path -Path $PROFILE) -and (winget list --name "OhMyPosh" -e) -and ($fontFamilies -contains "CaskaydiaMono NF")) {
         Write-Host "Setup completed successfully. Please restart your PowerShell session to apply changes."
