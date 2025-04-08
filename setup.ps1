@@ -72,7 +72,7 @@ Update-Profile
 
 # Install Oh My Posh
 try {
-    winget install -e --accept-source-agreements --accept-package-agreements JanDeDobbeleer.OhMyPosh -Force
+    winget install -e --accept-source-agreements --accept-package-agreements JanDeDobbeleer.OhMyPosh 
     Write-Host "Oh My Posh installed successfully."
 }
 catch {
