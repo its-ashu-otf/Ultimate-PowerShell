@@ -21,7 +21,7 @@ Write-Host ""
 # Function to test internet connectivity
 function Test-InternetConnection {
     try {
-        Test-Connection -ComputerName www.google.com -Count 1 -ErrorAction Stop | Out-Null
+        Test-Connection -ComputerName www.google.com -Count 1 -ErrorAction Stop
         return $true
     }
     catch {
@@ -35,45 +35,45 @@ if (-not (Test-InternetConnection)) {
     exit
 }
 
-# Ensure winget is available
-if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
-    Write-Error "winget is not installed or not available in the PATH. Please install winget and try again."
-    exit
-}
-
 # Profile creation or update
-function Update-Profile {
+if (!(Test-Path -Path $PROFILE -PathType Leaf)) {
     try {
-        $profilePath = if ($PSVersionTable.PSEdition -eq "Core") {
-            "$env:USERPROFILE\Documents\Powershell"
-        } else {
-            "$env:USERPROFILE\Documents\WindowsPowerShell"
+        # Detect Version of PowerShell & Create Profile directories if they do not exist
+        $profilePath = ""
+        if ($PSVersionTable.PSEdition -eq "Core") { 
+            $profilePath = "$env:USERPROFILE\Documents\Powershell"
+        }
+        elseif ($PSVersionTable.PSEdition -eq "Desktop") {
+            $profilePath = "$env:USERPROFILE\Documents\WindowsPowerShell"
         }
 
         if (!(Test-Path -Path $profilePath)) {
-            New-Item -Path $profilePath -ItemType "directory" -Force | Out-Null
+            New-Item -Path $profilePath -ItemType "directory"
         }
 
-        if (!(Test-Path -Path $PROFILE -PathType Leaf)) {
-            Invoke-RestMethod -Uri "https://github.com/its-ashu-otf/powershell-profile/raw/main/Microsoft.PowerShell_profile.ps1" -OutFile $PROFILE
-            Write-Host "The profile @ [$PROFILE] has been created."
-        } else {
-            Move-Item -Path $PROFILE -Destination "$PROFILE.old" -Force
-            Invoke-RestMethod -Uri "https://github.com/its-ashu-otf/powershell-profile/raw/main/Microsoft.PowerShell_profile.ps1" -OutFile $PROFILE
-            Write-Host "The profile @ [$PROFILE] has been updated and the old profile has been backed up."
-        }
+        Invoke-RestMethod -Uri "https://github.com/its-ashu-otf/powershell-profile/raw/main/Microsoft.PowerShell_profile.ps1" -OutFile $PROFILE
+        Write-Host "The profile @ [$PROFILE] has been created."
+        Write-Host "If you want to make any personal changes or customizations, please do so at [$profilePath\Profile.ps1] as there is an updater in the installed profile which uses the hash to update the profile and will lead to loss of changes."
     }
     catch {
         Write-Error "Failed to create or update the profile. Error: $_"
     }
 }
+else {
+    try {
+        Move-Item -Path $PROFILE -Destination "$PROFILE.old" -Force
+        Invoke-RestMethod -Uri "https://github.com/its-ashu-otf/powershell-profile/raw/main/Microsoft.PowerShell_profile.ps1" -OutFile $PROFILE
+        Write-Host "The profile @ [$PROFILE] has been updated and the old profile has been backed up."
+        Write-Host "Please back up any persistent components of your old profile to [$HOME\Documents\PowerShell\Profile.ps1] as there is an updater in the installed profile which uses the hash to update the profile and will lead to loss of changes."
+    }
+    catch {
+        Write-Error "Failed to backup and update the profile. Error: $_"
+    }
+}
 
-Update-Profile
-
-# Install Oh My Posh
+# OMP Install
 try {
-    winget install -e --accept-source-agreements --accept-package-agreements JanDeDobbeleer.OhMyPosh 
-    Write-Host "Oh My Posh installed successfully."
+    winget install -e --accept-source-agreements --accept-package-agreements JanDeDobbeleer.OhMyPosh
 }
 catch {
     Write-Error "Failed to install Oh My Posh. Error: $_"
@@ -94,9 +94,10 @@ function Install-NerdFonts {
             $zipFilePath = "$env:TEMP\${FontName}.zip"
             $extractPath = "$env:TEMP\${FontName}"
 
-            Invoke-WebRequest -Uri $fontZipUrl -OutFile $zipFilePath
-            Expand-Archive -Path $zipFilePath -DestinationPath $extractPath -Force
+            $webClient = New-Object System.Net.WebClient
+            $webClient.DownloadFile($fontZipUrl, $zipFilePath)
 
+            Expand-Archive -Path $zipFilePath -DestinationPath $extractPath -Force
             $destination = (New-Object -ComObject Shell.Application).Namespace("C:\Windows\Fonts")
             Get-ChildItem -Path $extractPath -Recurse -Filter "*.ttf" | ForEach-Object {
                 If (-not (Test-Path "C:\Windows\Fonts\$($_.Name)")) {
@@ -106,8 +107,8 @@ function Install-NerdFonts {
 
             Remove-Item -Path $extractPath -Recurse -Force
             Remove-Item -Path $zipFilePath -Force
-            Write-Host "Font $FontDisplayName installed successfully."
-        } else {
+        }
+        else {
             Write-Host "Font $FontDisplayName is already installed."
         }
     }
@@ -116,7 +117,7 @@ function Install-NerdFonts {
     }
 }
 
-# Install CascadiaMono Nerd Font
+# Font Install
 Install-NerdFonts -FontName "CascadiaMono" -FontDisplayName "CaskaydiaMono NF"
 
 # Final check and message to the user
@@ -133,45 +134,33 @@ catch {
     Write-Error "Failed during final check. Error: $_"
 }
 
-# Install Terminal Icons
+# Terminal Icons Install
 try {
     Install-Module -Name Terminal-Icons -Repository PSGallery -Force
-    Write-Host "Terminal Icons module installed successfully."
 }
 catch {
     Write-Error "Failed to install Terminal Icons module. Error: $_"
 }
 
-# Install PSCompletions
+# PSCompletions Install
 try {
     Install-Module -Name PSCompletions -Scope CurrentUser -Repository PSGallery -Force
-    Write-Host "PSCompletions module installed successfully."
 }
 catch {
     Write-Error "Failed to install PSCompletions module. Error: $_"
 }
 
-# Install Linux Tools
-function Install-LinuxTools {
-    $tools = @(
-        "Fastfetch-cli.Fastfetch",
-        "ajeetdsouza.zoxide",
-        "junegunn.fzf",
-        "cURL.cURL",
-        "sharkdp.bat",
-        "Git.Git",
-        "GNU.Wget2"
-    )
-
-    foreach ($tool in $tools) {
-        try {
-            winget install -e --id $tool --accept-source-agreements --accept-package-agreements -Force
-            Write-Host "$tool installed successfully."
-        }
-        catch {
-            Write-Error "Failed to install $tool. Error: $_"
-        }
-    }
+# Linux Tools Install
+try {
+    winget install -e --id Fastfetch-cli.Fastfetch
+    winget install -e --id ajeetdsouza.zoxide
+    winget install -e --id junegunn.fzf
+    winget install -e --id cURL.cURL
+    winget install -e --id sharkdp.bat 
+    winget install -e --id Git.Git
+    winget install -e --id GNU.Wget2    
+    Write-Host "Linux tools installed successfully."
 }
-
-Install-LinuxTools
+catch {
+    Write-Error "Failed to install Linux tools. Error: $_"
+}
