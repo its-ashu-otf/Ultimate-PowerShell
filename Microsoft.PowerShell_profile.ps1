@@ -536,9 +536,9 @@ function Get-Theme {
             Invoke-Expression $existingTheme
             return
         }
-        oh-my-posh init pwsh --config $env:POSH_THEMES_PATH\hul10.omp.json | Invoke-Expression
+        oh-my-posh init pwsh --config $env:USERPROFILE\Documents\PowerShell\hul10.omp.json | Invoke-Expression
     } else {
-        oh-my-posh init pwsh --config $env:POSH_THEMES_PATH\hul10.omp.json | Invoke-Expression
+        oh-my-posh init pwsh --config $env:USERPROFILE\Documents\PowerShell\hul10.omp.json | Invoke-Expression
     }
 }
 
