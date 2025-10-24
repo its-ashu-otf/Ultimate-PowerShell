@@ -79,11 +79,31 @@ catch {
     Write-Error "Failed to install Oh My Posh. Error: $_"
 }
 
+# Download Oh My Posh Theme
+try {
+    Write-Host "Downloading Oh My Posh theme..."
+    $themeDestination = "$env:USERPROFILE\Documents\PowerShell\hul10.omp.json"
+    $themeUrl = "https://raw.githubusercontent.com/its-ashu-otf/Ultimate-PowerShell/refs/heads/main/hul10.mp.json"
+    
+    # Create PowerShell directory if it doesn't exist
+    $psDirectory = Split-Path -Parent $themeDestination
+    if (!(Test-Path -Path $psDirectory)) {
+        New-Item -Path $psDirectory -ItemType Directory -Force
+    }
+    
+    # Download the theme file
+    Invoke-WebRequest -Uri $themeUrl -OutFile $themeDestination
+    Write-Host "Oh My Posh theme downloaded successfully to $themeDestination" -ForegroundColor Green
+}
+catch {
+    Write-Error "Failed to download Oh My Posh theme. Error: $_"
+}
+
 # Function to install Nerd Fonts
 function Install-NerdFonts {
     param (
-        [string]$FontName = "CascadiaCode",
-        [string]$FontDisplayName = "CaskaydiaCove NF"
+        [string]$FontName = "0xProto",
+        [string]$FontDisplayName = "0xProto NF"
     )
 
     try {
@@ -118,7 +138,7 @@ function Install-NerdFonts {
 }
 
 # Font Install
-Install-NerdFonts -FontName "CascadiaMono" -FontDisplayName "CaskaydiaMono NF"
+Install-NerdFonts -FontName "0xProto" -FontDisplayName "0xProto NF"
 
 # Final check and message to the user
 try {
