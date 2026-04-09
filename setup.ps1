@@ -165,6 +165,7 @@ catch {
 # PSCompletions Install
 try {
     Install-Module -Name PSCompletions -Scope CurrentUser -Repository PSGallery -Force
+    Install-Module -Name PSFzf -Scope CurrentUser -Repository PSGallery -Force
 }
 catch {
     Write-Error "Failed to install PSCompletions module. Error: $_"
