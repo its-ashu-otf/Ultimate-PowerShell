@@ -1,9 +1,3 @@
-# Ensure the script can run with elevated privileges
-if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    Write-Warning "Please run this script as an Administrator!"
-    exit
-}
-
 # Display banner
 $banner = @"
     __  ______  _                 __          ____                          _____ __         ____
@@ -18,148 +12,202 @@ Write-Host "Author: its-ashu-otf" -ForegroundColor Cyan
 Write-Host "Welcome to the Ultimate PowerShell Setup Script!" -ForegroundColor Green
 Write-Host ""
 
-# Function to test internet connectivity
-function Test-InternetConnection {
+$profileSourceUri = 'https://github.com/its-ashu-otf/Ultimate-PowerShell/raw/main/Microsoft.PowerShell_profile.ps1'
+$themeSourceUri = 'https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/hul10.omp.json'
+
+function Enable-Tls12 {
     try {
-        Test-Connection -ComputerName www.google.com -Count 1 -ErrorAction Stop
-        return $true
+        [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+    } catch {
+        Write-Verbose "Unable to enable TLS 1.2 explicitly: $_"
     }
-    catch {
-        Write-Warning "Internet connection is required but not available. Please check your connection."
+}
+
+Enable-Tls12
+
+function Test-IsAdministrator {
+    $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $principal = [Security.Principal.WindowsPrincipal]$identity
+    return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+
+function Test-Command {
+    param([Parameter(Mandatory)][string]$Name)
+    $null -ne (Get-Command -Name $Name -ErrorAction SilentlyContinue)
+}
+
+function Save-UriToFile {
+    param(
+        [Parameter(Mandatory)][string]$Uri,
+        [Parameter(Mandatory)][string]$OutFile
+    )
+
+    $client = New-Object System.Net.WebClient
+    try {
+        $client.DownloadFile($Uri, $OutFile)
+    } finally {
+        $client.Dispose()
+    }
+}
+
+function Get-ProfileDir {
+    switch ($PSVersionTable.PSEdition) {
+        'Core' { Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'PowerShell'; break }
+        'Desktop' { Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'WindowsPowerShell'; break }
+        default { throw "Unsupported PowerShell edition: $($PSVersionTable.PSEdition)" }
+    }
+}
+
+function Test-InternetConnection {
+    $response = $null
+    try {
+        $request = [System.Net.WebRequest]::Create('https://github.com')
+        $request.Method = 'HEAD'
+        $request.Timeout = 10000
+        $response = $request.GetResponse()
+        return $true
+    } catch {
+        Write-Warning 'Internet connection is required but GitHub is not reachable.'
+        return $false
+    } finally {
+        if ($response) {
+            $response.Close()
+        }
+    }
+}
+
+function Save-ProfileBackup {
+    param([Parameter(Mandatory)][string]$ProfilePath)
+
+    if (-not (Test-Path -Path $ProfilePath -PathType Leaf)) {
+        return $null
+    }
+
+    $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+    $backupPath = Join-Path (Split-Path -Path $ProfilePath -Parent) "oldprofile-$timestamp.ps1"
+    Copy-Item -Path $ProfilePath -Destination $backupPath -Force
+    return $backupPath
+}
+
+function Install-Profile {
+    param(
+        [Parameter(Mandatory)][string]$SourceUri,
+        [Parameter(Mandatory)][string]$ProfilePath
+    )
+
+    $profileDir = Split-Path -Path $ProfilePath -Parent
+    if (-not (Test-Path -Path $profileDir)) {
+        New-Item -Path $profileDir -ItemType Directory -Force | Out-Null
+    }
+
+    $tempProfile = Join-Path $env:TEMP 'Microsoft.PowerShell_profile.ps1'
+    try {
+        Save-UriToFile -Uri $SourceUri -OutFile $tempProfile
+        $backupPath = Save-ProfileBackup -ProfilePath $ProfilePath
+        Copy-Item -Path $tempProfile -Destination $ProfilePath -Force
+
+        Write-Host "PowerShell profile installed to [$ProfilePath]."
+        if ($backupPath) {
+            Write-Host "Previous profile backed up to [$backupPath]."
+        }
+    } finally {
+        Remove-Item -Path $tempProfile -ErrorAction SilentlyContinue
+    }
+}
+
+function Install-WinGetPackage {
+    param(
+        [Parameter(Mandatory)][string]$Id,
+        [Parameter(Mandatory)][string]$Name
+    )
+
+    if (-not (Test-Command winget)) {
+        Write-Warning "winget was not found. Skipping $Name."
+        return $false
+    }
+
+    try {
+        winget install --id $Id --exact --source winget --accept-source-agreements --accept-package-agreements --silent
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "winget failed to install $Name. Exit code: $LASTEXITCODE"
+            return $false
+        }
+        return $true
+    } catch {
+        Write-Warning "Failed to install $Name. Error: $_"
         return $false
     }
 }
 
-# Check for internet connectivity before proceeding
-if (-not (Test-InternetConnection)) {
-    exit
-}
-
-# Profile creation or update
-if (!(Test-Path -Path $PROFILE -PathType Leaf)) {
-    try {
-        # Detect Version of PowerShell & Create Profile directories if they do not exist
-        $profilePath = ""
-        if ($PSVersionTable.PSEdition -eq "Core") { 
-            $profilePath = "$env:USERPROFILE\Documents\Powershell"
-        }
-        elseif ($PSVersionTable.PSEdition -eq "Desktop") {
-            $profilePath = "$env:USERPROFILE\Documents\WindowsPowerShell"
-        }
-
-        if (!(Test-Path -Path $profilePath)) {
-            New-Item -Path $profilePath -ItemType "directory"
-        }
-
-        Invoke-RestMethod -Uri "https://github.com/its-ashu-otf/powershell-profile/raw/main/Microsoft.PowerShell_profile.ps1" -OutFile $PROFILE
-        Write-Host "The profile @ [$PROFILE] has been created."
-        Write-Host "If you want to make any personal changes or customizations, please do so at [$profilePath\Profile.ps1] as there is an updater in the installed profile which uses the hash to update the profile and will lead to loss of changes."
-    }
-    catch {
-        Write-Error "Failed to create or update the profile. Error: $_"
-    }
-}
-else {
-    try {
-        Move-Item -Path $PROFILE -Destination "$PROFILE.old" -Force
-        Invoke-RestMethod -Uri "https://github.com/its-ashu-otf/powershell-profile/raw/main/Microsoft.PowerShell_profile.ps1" -OutFile $PROFILE
-        Write-Host "The profile @ [$PROFILE] has been updated and the old profile has been backed up."
-        Write-Host "Please back up any persistent components of your old profile to [$HOME\Documents\PowerShell\Profile.ps1] as there is an updater in the installed profile which uses the hash to update the profile and will lead to loss of changes."
-    }
-    catch {
-        Write-Error "Failed to backup and update the profile. Error: $_"
-    }
-}
-
-# OMP Install
-try {
-    winget install -e --accept-source-agreements --accept-package-agreements JanDeDobbeleer.OhMyPosh
-}
-catch {
-    Write-Error "Failed to install Oh My Posh. Error: $_"
-}
-
-# Download Oh My Posh Theme
-try {
-    Write-Host "Downloading Oh My Posh theme..."
-    $themeDestination = "$env:USERPROFILE\Documents\PowerShell\hul10.omp.json"
-    $themeUrl = "https://raw.githubusercontent.com/its-ashu-otf/Ultimate-PowerShell/refs/heads/main/hul10.mp.json"
-    
-    # Create PowerShell directory if it doesn't exist
-    $psDirectory = Split-Path -Parent $themeDestination
-    if (!(Test-Path -Path $psDirectory)) {
-        New-Item -Path $psDirectory -ItemType Directory -Force
-    }
-    
-    # Download the theme file
-    Invoke-WebRequest -Uri $themeUrl -OutFile $themeDestination
-    Write-Host "Oh My Posh theme downloaded successfully to $themeDestination" -ForegroundColor Green
-}
-catch {
-    Write-Error "Failed to download Oh My Posh theme. Error: $_"
-}
-
-# Function to install Nerd Fonts
-function Install-NerdFonts {
-    param (
-        [string]$FontName = "0xProto",
-        [string]$FontDisplayName = "0xProto NF"
+function Install-OhMyPoshTheme {
+    param(
+        [string]$ThemeName = 'hul10',
+        [string]$ThemeUri = $themeSourceUri
     )
 
+    $profileDir = Get-ProfileDir
+    if (-not (Test-Path -Path $profileDir)) {
+        New-Item -Path $profileDir -ItemType Directory -Force | Out-Null
+    }
+
+    $themePath = Join-Path $profileDir "$ThemeName.omp.json"
     try {
-        Add-Type -AssemblyName System.Drawing
-        $fontFamilies = (New-Object System.Drawing.Text.InstalledFontCollection).Families | ForEach-Object { $_.Name }
-        if ($fontFamilies -notcontains $FontDisplayName) {
-            $fontZipUrl = "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/${FontName}.zip"
-            $zipFilePath = "$env:TEMP\${FontName}.zip"
-            $extractPath = "$env:TEMP\${FontName}"
+        Save-UriToFile -Uri $ThemeUri -OutFile $themePath
+        Write-Host "Oh My Posh theme installed to [$themePath]."
+        return $themePath
+    } catch {
+        Write-Warning "Failed to download Oh My Posh theme. Error: $_"
+        return $null
+    }
+}
 
-            $webClient = New-Object System.Net.WebClient
-            $webClient.DownloadFile($fontZipUrl, $zipFilePath)
+function Get-InstalledFontName {
+    try {
+        Add-Type -AssemblyName System.Drawing -ErrorAction Stop
+        return (New-Object System.Drawing.Text.InstalledFontCollection).Families.Name
+    } catch {
+        Write-Warning "Unable to inspect installed fonts. Error: $_"
+        return @()
+    }
+}
 
-            Expand-Archive -Path $zipFilePath -DestinationPath $extractPath -Force
-            $destination = (New-Object -ComObject Shell.Application).Namespace("C:\Windows\Fonts")
-            Get-ChildItem -Path $extractPath -Recurse -Filter "*.ttf" | ForEach-Object {
-                If (-not (Test-Path "C:\Windows\Fonts\$($_.Name)")) {
-                    $destination.CopyHere($_.FullName, 0x10)
-                }
+function Install-NerdFont {
+    param(
+        [string]$FontName = '0xProto',
+        [string]$FontDisplayName = '0xProtoNerdFontMono-Regular',
+        [string]$Version = '3.5.1'
+    )
+
+    if ((Get-InstalledFontName) -contains $FontDisplayName) {
+        Write-Host "Font [$FontDisplayName] is already installed."
+        return $true
+    }
+
+    $fontZipUrl = "https://github.com/ryanoasis/nerd-fonts/releases/download/v$Version/$FontName.zip"
+    $zipFilePath = Join-Path $env:TEMP "$FontName.zip"
+    $extractPath = Join-Path $env:TEMP $FontName
+
+    try {
+        Remove-Item -Path $extractPath -Recurse -Force -ErrorAction SilentlyContinue
+        Save-UriToFile -Uri $fontZipUrl -OutFile $zipFilePath
+        Expand-Archive -Path $zipFilePath -DestinationPath $extractPath -Force
+
+        $fontShellFolder = (New-Object -ComObject Shell.Application).Namespace(0x14)
+        Get-ChildItem -Path $extractPath -Recurse -Filter '*.ttf' | ForEach-Object {
+            if (-not (Test-Path "C:\Windows\Fonts\$($_.Name)")) {
+                $fontShellFolder.CopyHere($_.FullName, 0x10)
             }
-
-            Remove-Item -Path $extractPath -Recurse -Force
-            Remove-Item -Path $zipFilePath -Force
         }
-        else {
-            Write-Host "Font $FontDisplayName is already installed."
-        }
-    }
-    catch {
-        Write-Error "Failed to download or install $FontDisplayName font. Error: $_"
-    }
-}
 
-# Font Install
-Install-NerdFonts -FontName "0xProto" -FontDisplayName "0xProto NF"
-
-# Final check and message to the user
-try {
-    Add-Type -AssemblyName System.Drawing
-    $fontFamilies = (New-Object System.Drawing.Text.InstalledFontCollection).Families | ForEach-Object { $_.Name }
-    if ((Test-Path -Path $PROFILE) -and (winget list --name "OhMyPosh" -e) -and ($fontFamilies -contains "CaskaydiaMono NF")) {
-        Write-Host "Setup completed successfully. Please restart your PowerShell session to apply changes."
-    } else {
-        Write-Warning "Setup completed with errors. Please check the error messages above."
+        Write-Host "Font [$FontDisplayName] installed."
+        return $true
+    } catch {
+        Write-Warning "Failed to install $FontDisplayName. Error: $_"
+        return $false
+    } finally {
+        Remove-Item -Path $extractPath -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item -Path $zipFilePath -Force -ErrorAction SilentlyContinue
     }
-}
-catch {
-    Write-Error "Failed during final check. Error: $_"
-}
-
-# Terminal Icons Install
-try {
-    Install-Module -Name Terminal-Icons -Repository PSGallery -Force
-}
-catch {
-    Write-Error "Failed to install Terminal Icons module. Error: $_"
 }
 
 # PSCompletions Install
@@ -170,18 +218,45 @@ try {
 catch {
     Write-Error "Failed to install PSCompletions module. Error: $_"
 }
+# Terminal Icons Install
+function Install-TerminalIconsModule {
+    try {
+        Install-Module -Name Terminal-Icons -Repository PSGallery -Scope CurrentUser -Force -SkipPublisherCheck
+        Write-Host 'Terminal-Icons module installed.'
+        return $true
+    } catch {
+        Write-Warning "Failed to install Terminal-Icons. Error: $_"
+        return $false
+    }
+}
 
-# Linux Tools Install
+if (-not (Test-IsAdministrator)) {
+    Write-Warning 'Please run this script as an Administrator.'
+    return
+}
+
+if (-not (Test-InternetConnection)) {
+    return
+}
+
 try {
-    winget install -e --id Fastfetch-cli.Fastfetch
-    winget install -e --id ajeetdsouza.zoxide
-    winget install -e --id junegunn.fzf
-    winget install -e --id cURL.cURL
-    winget install -e --id sharkdp.bat 
-    winget install -e --id Git.Git
-    winget install -e --id GNU.Wget2    
-    Write-Host "Linux tools installed successfully."
+    [Environment]::SetEnvironmentVariable('POWERSHELL_TELEMETRY_OPTOUT', '1', [EnvironmentVariableTarget]::Machine)
+} catch {
+    Write-Warning "Unable to set PowerShell telemetry opt-out. Error: $_"
 }
-catch {
-    Write-Error "Failed to install Linux tools. Error: $_"
-}
+
+$profilePath = $PROFILE.CurrentUserCurrentHost
+Install-Profile -SourceUri $profileSourceUri -ProfilePath $profilePath
+Install-WinGetPackage -Id 'JanDeDobbeleer.OhMyPosh' -Name 'Oh My Posh' | Out-Null
+Install-WinGetPackage -Id 'Fastfetch-cli.Fastfetch' -Name 'Fastfetch' | Out-Null
+Install-WinGetPackage -Id 'junegunn.fzf' -Name 'fzf' | Out-Null
+Install-WinGetPackage -Id 'cURL.cURL' -Name 'curl' | Out-Null
+Install-WinGetPackage -Id 'sharkdp.bat' -Name 'bat' | Out-Null
+Install-WinGetPackage -Id 'Git.Git' -Name 'git' | Out-Null
+Install-WinGetPackage -Id 'GNU.Wget2' -Name 'wget' | Out-Null
+
+Install-OhMyPoshTheme | Out-Null
+Install-NerdFont | Out-Null
+Install-TerminalIconsModule | Out-Null
+
+Write-Host 'Setup completed. Restart PowerShell to load the profile.'
