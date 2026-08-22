@@ -1,4 +1,4 @@
-# 🎨 Ultimate-PowerShell
+# 🧑🏻‍💻 Ultimate-PowerShell
 
 Linux terminal experience on windows with a quality of life aliases and shortcuts.
 
