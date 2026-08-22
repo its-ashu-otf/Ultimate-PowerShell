@@ -1,5 +1,38 @@
 ### Ashu's PowerShell profile
 
+### Version 3.00
+$debug = $false
+
+# Define the path to the file that stores the last execution time
+$timeFilePath = "$env:USERPROFILE\Documents\PowerShell\LastExecutionTime.txt"
+# Define the update interval in days, set to -1 to always check
+$updateInterval = 7
+
+if ($debug) {
+    Write-Host "#######################################" -ForegroundColor Red
+    Write-Host "#           Debug mode enabled        #" -ForegroundColor Red
+    Write-Host "#          ONLY FOR DEVELOPMENT       #" -ForegroundColor Red
+    Write-Host "#                                     #" -ForegroundColor Red
+    Write-Host "#       IF YOU ARE NOT DEVELOPING     #" -ForegroundColor Red
+    Write-Host "#       JUST RUN `Update-Profile`     #" -ForegroundColor Red
+    Write-Host "#        to discard all changes       #" -ForegroundColor Red
+    Write-Host "#   and update to the latest profile  #" -ForegroundColor Red
+    Write-Host "#               version               #" -ForegroundColor Red
+    Write-Host "#######################################" -ForegroundColor Red
+}
+
+#################################################################################################################################
+############                                                                                                         ############
+############                                          !!!   WARNING:   !!!                                           ############
+############                                                                                                         ############
+############                DO NOT MODIFY THIS FILE. THIS FILE IS HASHED AND UPDATED AUTOMATICALLY.                  ############
+############                    ANY CHANGES MADE TO THIS FILE WILL BE OVERWRITTEN BY COMMITS TO                      ############
+############                                                                                                                                                 ############
+############                      IF YOU WANT TO MAKE CHANGES, USE THE Edit-Profile FUNCTION                         ############
+############                              AND SAVE YOUR CHANGES IN THE FILE CREATED.                                 ############
+############                                                                                                         ############
+#################################################################################################################################
+
 function Enable-Tls12 {
     try {
         [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
@@ -66,6 +99,56 @@ function Get-UriContent {
         $client.Dispose()
     }
 }
+
+
+# Opt-out of telemetry before doing anything, only if PowerShell is run as admin
+if ([bool]([System.Security.Principal.WindowsIdentity]::GetCurrent()).IsSystem) {
+    [System.Environment]::SetEnvironmentVariable('POWERSHELL_TELEMETRY_OPTOUT', 'true', [System.EnvironmentVariableTarget]::Machine)
+}
+
+# Initial GitHub.com connectivity check with 1 second timeout
+$global:canConnectToGitHub = Test-Connection github.com -Count 1 -Quiet -TimeoutSeconds 1
+
+# Import Modules and External Profiles
+# Ensure Terminal-Icons module is installed before importing
+if (-not (Get-Module -ListAvailable -Name Terminal-Icons)) {
+    Install-Module -Name Terminal-Icons -Scope CurrentUser -Force -SkipPublisherCheck
+}
+Import-Module -Name Terminal-Icons
+
+# Ensure PSCompletions module is installed before importing
+if (-not (Get-Module -ListAvailable -Name PSCompletions)) {
+    Install-Module PSCompletions -Scope CurrentUser -Force -SkipPublisherCheck
+}
+Import-Module PSCompletions
+
+$ChocolateyProfile = "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
+if (Test-Path($ChocolateyProfile)) {
+    Import-Module "$ChocolateyProfile"
+}
+
+function Greet-User {
+    param (
+        [string]$CustomUser
+    )
+
+    $username = if ($CustomUser) { $CustomUser } else { $env:USERNAME }
+    if (-not $username) { $username = "User" }
+
+    $hour = (Get-Date).Hour
+    
+    # Determine the correct greeting based on time
+    $greeting = if ($hour -lt 6) { "Good Night" }
+    elseif ($hour -lt 12) { "Good Morning" }
+    elseif ($hour -lt 18) { "Good Afternoon" }
+    elseif ($hour -lt 22) { "Good Evening" }
+    else { "Good Night" }
+
+    Write-Host "$greeting, $username! Welcome to Ultimate PowerShell!" -ForegroundColor White
+}
+
+# Call function
+Greet-User
 
 $isInteractiveShell = Test-InteractiveShell
 $debug = if ($null -ne $debug_Override) { [bool]$debug_Override } else { $false }
@@ -250,33 +333,6 @@ function Clear-Cache {
     }
 }
 
-function Initialize-OptionalModule {
-    if (-not $isInteractiveShell) {
-        return
-    }
-
-	# Ensure Terminal-Icons module is installed before importing
-	if (-not (Get-Module -ListAvailable -Name Terminal-Icons)) {
-	    Install-Module -Name Terminal-Icons -Scope CurrentUser -Force -SkipPublisherCheck
-	}
-	Import-Module -Name Terminal-Icons
-	
-	# Ensure PSCompletions module is installed before importing
-	if (-not (Get-Module -ListAvailable -Name PSCompletions)) {
-	    Install-Module PSCompletions -Scope CurrentUser -Force -SkipPublisherCheck
-	}
-	Import-Module PSCompletions
-
-    $chocolateyProfile = if ($env:ChocolateyInstall) {
-        Join-Path $env:ChocolateyInstall 'helpers\chocolateyProfile.psm1'
-    } else {
-        $null
-    }
-
-    if ($chocolateyProfile -and (Test-Path -Path $chocolateyProfile -PathType Leaf)) {
-        Import-Module $chocolateyProfile -ErrorAction SilentlyContinue
-    }
-}
 
 function Resolve-Editor {
     if ($EDITOR_Override) {
@@ -292,31 +348,6 @@ function Resolve-Editor {
     return 'notepad'
 }
 
-
-function Greet-User {
-    param (
-        [string]$CustomUser
-    )
-
-    $username = if ($CustomUser) { $CustomUser } else { $env:USERNAME }
-    if (-not $username) { $username = "User" }
-
-    $hour = (Get-Date).Hour
-    
-    # Determine the correct greeting based on time
-    $greeting = if ($hour -lt 6) { "Good Night" }
-    elseif ($hour -lt 12) { "Good Morning" }
-    elseif ($hour -lt 18) { "Good Afternoon" }
-    elseif ($hour -lt 22) { "Good Evening" }
-    else { "Good Night" }
-
-    Write-Host "$greeting, $username! Welcome to Ultimate PowerShell!" -ForegroundColor White
-}
-
-# Call function
-Greet-User
-
-Initialize-OptionalModule
 
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 $EDITOR = Resolve-Editor
