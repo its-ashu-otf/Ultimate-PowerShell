@@ -248,14 +248,15 @@ try {
 
 $profilePath = $PROFILE.CurrentUserCurrentHost
 Install-Profile -SourceUri $profileSourceUri -ProfilePath $profilePath
-Install-WinGetPackage -Id 'JanDeDobbeleer.OhMyPosh' -Name 'Oh My Posh' | Out-Null
-Install-WinGetPackage -Id 'Fastfetch-cli.Fastfetch' -Name 'Fastfetch' | Out-Null
-Install-WinGetPackage -Id 'junegunn.fzf' -Name 'fzf' | Out-Null
-Install-WinGetPackage -Id 'cURL.cURL' -Name 'curl' | Out-Null
-Install-WinGetPackage -Id 'sharkdp.bat' -Name 'bat' | Out-Null
-Install-WinGetPackage -Id 'Git.Git' -Name 'git' | Out-Null
-Install-WinGetPackage -Id 'GNU.Wget2' -Name 'wget' | Out-Null
-
+winget install -e --id JanDeDobbeleer.OhMyPosh
+winget install -e --id Fastfetch-cli.Fastfetch
+winget install -e --id ajeetdsouza.zoxide
+winget install -e --id junegunn.fzf
+winget install -e --id cURL.cURL
+winget install -e --id sharkdp.bat 
+winget install -e --id Git.Git
+winget install -e --id GNU.Wget2   
+    
 Install-OhMyPoshTheme | Out-Null
 Install-NerdFont | Out-Null
 Install-TerminalIconsModule | Out-Null
