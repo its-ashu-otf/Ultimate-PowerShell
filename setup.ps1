@@ -83,7 +83,7 @@ catch {
 try {
     Write-Host "Downloading Oh My Posh theme..."
     $themeDestination = "$env:USERPROFILE\Documents\PowerShell\hul10.omp.json"
-    $themeUrl = "https://raw.githubusercontent.com/its-ashu-otf/Ultimate-PowerShell/refs/heads/main/hul10.mp.json"
+    $themeUrl = "https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/hul10.omp.json"
     
     # Create PowerShell directory if it doesn't exist
     $psDirectory = Split-Path -Parent $themeDestination
