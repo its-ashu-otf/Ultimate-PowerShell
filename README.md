@@ -7,7 +7,7 @@ Linux terminal experience on windows with a quality of life aliases and shortcut
 Execute the following command in an elevated PowerShell window to install the PowerShell profile:
 
 ```powershell
-irm "https://github.com/its-ashu-otf/powershell-profile/raw/main/setup.ps1" | iex
+irm "https://github.com/its-ashu-otf/Ultimate-PowerShell/raw/main/setup.ps1" | iex
 ```
 
 
