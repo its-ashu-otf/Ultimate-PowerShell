@@ -10,6 +10,7 @@ $banner = @"
 Write-Host $banner -ForegroundColor Blue
 Write-Host "Author: its-ashu-otf" -ForegroundColor Cyan
 Write-Host "Welcome to the Ultimate PowerShell Setup Script!" -ForegroundColor Green
+Write-Host "Version: 3.0" -ForegroundColor Green
 Write-Host ""
 
 $profileSourceUri = 'https://github.com/its-ashu-otf/Ultimate-PowerShell/raw/main/Microsoft.PowerShell_profile.ps1'
