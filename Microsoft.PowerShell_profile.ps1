@@ -51,6 +51,46 @@ function Test-InteractiveShell {
     }
 }
 
+function Get-ProfileDir {
+    switch ($PSVersionTable.PSEdition) {
+        'Core' { Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'PowerShell'; break }
+        'Desktop' { Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'WindowsPowerShell'; break }
+        default {
+            throw "Unsupported PowerShell edition: $($PSVersionTable.PSEdition)"
+        }
+    }
+}
+
+function Test-Command {
+    param([Parameter(Mandatory)][string]$Name)
+    $null -ne (Get-Command -Name $Name -ErrorAction SilentlyContinue)
+}
+
+function Save-UriToFile {
+    param(
+        [Parameter(Mandatory)][string]$Uri,
+        [Parameter(Mandatory)][string]$OutFile
+    )
+
+    $client = New-Object System.Net.WebClient
+    try {
+        $client.DownloadFile($Uri, $OutFile)
+    } finally {
+        $client.Dispose()
+    }
+}
+
+function Get-UriContent {
+    param([Parameter(Mandatory)][string]$Uri)
+
+    $client = New-Object System.Net.WebClient
+    try {
+        $client.DownloadString($Uri)
+    } finally {
+        $client.Dispose()
+    }
+}
+
 # Import Modules and External Profiles
 # Ensure Terminal-Icons module is installed before importing
 if (-not (Get-Module -ListAvailable -Name Terminal-Icons)) {
