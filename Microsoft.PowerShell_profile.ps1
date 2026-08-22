@@ -132,6 +132,14 @@ function Greet-User {
 # Call function
 Greet-User
 
+$isInteractiveShell = Test-InteractiveShell
+$debug = if ($null -ne $debug_Override) { [bool]$debug_Override } else { $false }
+$repo_root = if ($repo_root_Override) { $repo_root_Override } else { 'https://raw.githubusercontent.com/ChrisTitusTech' }
+$profileDir = Get-ProfileDir
+$timeFilePath = if ($timeFilePath_Override) { $timeFilePath_Override } else { Join-Path $profileDir 'LastExecutionTime.txt' }
+$updateInterval = if ($null -ne $updateInterval_Override) { [int]$updateInterval_Override } else { 7 }
+$showHelpOnLaunch = if ($null -ne $show_help_Override) { [bool]$show_help_Override } else { $false }
+
 function Test-ProfileUpdateDue {
     param(
         [Parameter(Mandatory)][string]$Path,
@@ -161,6 +169,11 @@ function Test-ProfileUpdateDue {
     return ((Get-Date).Date - $lastRun.Date).TotalDays -ge $IntervalDays
 }
 
+function Test-ProfileIsSymlink {
+    $profileItem = Get-Item -LiteralPath $PROFILE.CurrentUserCurrentHost -Force -ErrorAction SilentlyContinue
+    return $profileItem -and $profileItem.LinkType -eq 'SymbolicLink'
+}
+
 # Check for Profile Updates
 function Update-Profile {
     [CmdletBinding(SupportsShouldProcess)]
@@ -172,7 +185,7 @@ function Update-Profile {
         return $true
     }
 
-    $url = "$repo_root/powershell-profile/main/Microsoft.PowerShell_profile.ps1"
+    $url = "$repo_root/Ultimate-PowerShell/main/Microsoft.PowerShell_profile.ps1"
     $target = $PROFILE.CurrentUserCurrentHost
     $tempFile = Join-Path $env:TEMP 'Microsoft.PowerShell_profile.ps1'
 
