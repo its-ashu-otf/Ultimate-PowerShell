@@ -255,19 +255,17 @@ function Initialize-OptionalModule {
         return
     }
 
-	# Ensure PSCompletions module is installed before importing
-	if (Get-Module -ListAvailable -Name PSCompletions) {
-	    Import-Module PSCompletions -ErrorAction SilentlyContinue
-	} elseif ($isInteractiveShell) {
-        Write-Warning 'PSCompletions module is not installed. Run setup.ps1 to install dependencies.'
-    }
+	# Ensure Terminal-Icons module is installed before importing
+	if (-not (Get-Module -ListAvailable -Name Terminal-Icons)) {
+	    Install-Module -Name Terminal-Icons -Scope CurrentUser -Force -SkipPublisherCheck
+	}
+	Import-Module -Name Terminal-Icons
 	
-	# Ensure Terminal Icons module is installed before importing
-    if (Get-Module -ListAvailable -Name Terminal-Icons) {
-        Import-Module -Name Terminal-Icons -ErrorAction SilentlyContinue
-    } elseif ($isInteractiveShell) {
-        Write-Warning 'Terminal-Icons module is not installed. Run setup.ps1 to install dependencies.'
-    }
+	# Ensure PSCompletions module is installed before importing
+	if (-not (Get-Module -ListAvailable -Name PSCompletions)) {
+	    Install-Module PSCompletions -Scope CurrentUser -Force -SkipPublisherCheck
+	}
+	Import-Module PSCompletions
 
     $chocolateyProfile = if ($env:ChocolateyInstall) {
         Join-Path $env:ChocolateyInstall 'helpers\chocolateyProfile.psm1'
