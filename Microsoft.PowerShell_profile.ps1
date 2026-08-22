@@ -1,4 +1,4 @@
-### Chris Titus Tech's PowerShell profile
+### Ashu's PowerShell profile
 
 function Enable-Tls12 {
     try {
