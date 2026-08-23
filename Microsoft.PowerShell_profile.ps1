@@ -1,5 +1,5 @@
-### PowerShell Profile
-### Version 2.00
+### Ashu's PowerShell Profile
+### Version 3.00
 $debug = $false
 
 # Define the path to the file that stores the last execution time
@@ -200,7 +200,7 @@ function Update-Profile {
             if ($isInteractiveShell) {
                 Write-Host 'Profile is up to date.' -ForegroundColor Green
             }
-            return $true
+            return
         }
 
         if ($PSCmdlet.ShouldProcess($target, 'Update PowerShell profile')) {
@@ -213,7 +213,7 @@ function Update-Profile {
             Write-Host 'Profile has been updated. Restart your shell to use the new version.' -ForegroundColor Magenta
         }
 
-        return $true
+        return 
     } catch {
         Write-Warning "Unable to check for profile updates: $_"
         return $false
