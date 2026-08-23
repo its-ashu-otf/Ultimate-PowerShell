@@ -182,7 +182,7 @@ function Update-Profile {
 
     if (Get-Command -Name 'Update-Profile_Override' -ErrorAction SilentlyContinue) {
         Update-Profile_Override @PSBoundParameters
-        return $true
+        return 
     }
 
     $url = "$repo_root/Ultimate-PowerShell/main/Microsoft.PowerShell_profile.ps1"
@@ -324,11 +324,9 @@ function Enable-Tls12 {
 Enable-Tls12
 
 # Admin Check and Prompt Customization
-$isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 function prompt {
     if ($isAdmin) { "[" + (Get-Location) + "] # " } else { "[" + (Get-Location) + "] $ " }
 }
-$adminSuffix = if ($isAdmin) { " [ADMIN]" } else { "" }
 
 # Utility Functions
 function Test-CommandExists {
@@ -353,42 +351,96 @@ Set-Alias nano C:\Progra~1\Git\usr\bin\nano.exe
 
 # Quick Access to Editing the Profile
 function Edit-Profile {
-    vim $PROFILE.CurrentUserAllHosts
+    & $EDITOR $PROFILE.CurrentUserAllHosts
 }
-Set-Alias -Name ep -Value Edit-Profile
+Set-Alias -Name ep -Value Edit-Profile -Force
 
-function touch($file) { "" | Out-File $file -Encoding ASCII }
-function ff($name) {
-    Get-ChildItem -recurse -filter "*${name}*" -ErrorAction SilentlyContinue | ForEach-Object {
-        Write-Output "$($_.FullName)"
+function Invoke-Profile {
+    . $PROFILE.CurrentUserCurrentHost
+}
+
+function touch {
+    param([Parameter(Mandatory)][string]$File)
+
+    if (Test-Path -Path $File) {
+        (Get-Item -Path $File).LastWriteTime = Get-Date
+    } else {
+        New-Item -Path $File -ItemType File -Force | Out-Null
     }
 }
 
+function ff {
+    param([Parameter(Mandatory)][string]$Name)
+    Get-ChildItem -Recurse -Filter "*$Name*" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName
+}
+
+
 # Network Utilities
-function Get-PubIP { (Invoke-WebRequest http://ifconfig.me/ip).Content }
+function pubip {
+    (Get-UriContent -Uri 'https://ifconfig.me/ip').Trim()
+}
 
 # Open WinUtil full-release
 function winutil {
-	irm https://christitus.com/win | iex
+    & ([ScriptBlock]::Create((Invoke-RestMethod -Uri 'https://christitus.com/win'))) @args
 }
 
 # Open WinUtil pre-release
 function winutildev {
-	irm https://christitus.com/windev | iex
+    if (Get-Command -Name 'WinUtilDev_Override' -ErrorAction SilentlyContinue) {
+        WinUtilDev_Override @args
+        return
+    }
+
+    & ([ScriptBlock]::Create((Invoke-RestMethod -Uri 'https://christitus.com/windev'))) @args
+}
+
+function windev {
+    $winutilRepo = Join-Path ([Environment]::GetFolderPath('UserProfile')) 'github\winutil'
+    $compileScript = Join-Path $winutilRepo 'Compile.ps1'
+    $compiledScript = Join-Path $winutilRepo 'winutil.ps1'
+
+    if (-not (Test-Path -LiteralPath $compileScript -PathType Leaf)) {
+        throw "WinUtil's Compile.ps1 was not found at '$compileScript'."
+    }
+
+    Push-Location -LiteralPath $winutilRepo
+    try {
+        & $compileScript
+        if (-not $?) {
+            throw 'WinUtil compilation failed.'
+        }
+    } finally {
+        Pop-Location
+    }
+
+    if (-not (Test-Path -LiteralPath $compiledScript -PathType Leaf)) {
+        throw "WinUtil compilation did not create '$compiledScript'."
+    }
+
+    $shell = if (Test-Command pwsh) { 'pwsh.exe' } else { 'powershell.exe' }
+    Start-Process -FilePath $shell -WorkingDirectory $winutilRepo -ArgumentList @(
+        '-NoProfile',
+        '-ExecutionPolicy', 'Bypass',
+        '-File', $compiledScript
+    )
 }
 
 # System Utilities
 function admin {
-    if ($args.Count -gt 0) {
-        $argList = $args -join ' '
-        Start-Process wt -Verb runAs -ArgumentList "pwsh.exe -NoExit -Command $argList"
+    $cwd = (Get-Location).ProviderPath
+    $shell = if (Test-Command pwsh) { 'pwsh.exe' } else { 'powershell.exe' }
+    $shellArgs = if ($args.Count -gt 0) { @('-NoExit', '-Command', ($args -join ' ')) } else { @('-NoExit') }
+
+    if (Test-Command wt) {
+        Start-Process wt -Verb RunAs -ArgumentList (@('-d', $cwd, $shell) + $shellArgs)
     } else {
-        Start-Process wt -Verb runAs
+        Start-Process $shell -Verb RunAs -WorkingDirectory $cwd -ArgumentList $shellArgs
     }
 }
+Set-Alias -Name su -Value admin -Force
 
-# Set UNIX-like aliases for the admin command, so sudo <command> will run the command with elevated rights.
-Set-Alias -Name su -Value admin
+
 
 # Set UNIX-Like aliases 
 Set-Alias -Name cat -Value bat
@@ -396,67 +448,30 @@ Set-Alias -Name ifconfig -Value ipconfig
 Set-Alias -Name wget -Value wget2
 
 function uptime {
-    try {
-        # Check PowerShell version
-        if ($PSVersionTable.PSVersion.Major -eq 5) {
-            $lastBoot = (Get-WmiObject win32_operatingsystem).LastBootUpTime
-            $bootTime = [System.Management.ManagementDateTimeConverter]::ToDateTime($lastBoot)
-        } else {
-            $lastBootStr = net statistics workstation | Select-String "since" | ForEach-Object { $_.ToString().Replace('Statistics since ', '') }
-            # Check date format
-            if ($lastBootStr -match '^\d{2}/\d{2}/\d{4}') {
-                $dateFormat = 'dd/MM/yyyy'
-            } elseif ($lastBootStr -match '^\d{2}-\d{2}-\d{4}') {
-                $dateFormat = 'dd-MM-yyyy'
-            } elseif ($lastBootStr -match '^\d{4}/\d{2}/\d{2}') {
-                $dateFormat = 'yyyy/MM/dd'
-            } elseif ($lastBootStr -match '^\d{4}-\d{2}-\d{2}') {
-                $dateFormat = 'yyyy-MM-dd'
-            } elseif ($lastBootStr -match '^\d{2}\.\d{2}\.\d{4}') {
-                $dateFormat = 'dd.MM.yyyy'
-            }
-            
-            # Check time format
-            if ($lastBootStr -match '\bAM\b' -or $lastBootStr -match '\bPM\b') {
-                $timeFormat = 'h:mm:ss tt'
-            } else {
-                $timeFormat = 'HH:mm:ss'
-            }
-
-            $bootTime = [System.DateTime]::ParseExact($lastBootStr, "$dateFormat $timeFormat", [System.Globalization.CultureInfo]::InvariantCulture)
-        }
-
-        # Format the start time
-        $formattedBootTime = $bootTime.ToString("dddd, MMMM dd, yyyy HH:mm:ss", [System.Globalization.CultureInfo]::InvariantCulture) + " [$lastBootStr]"
-        Write-Host "System started on: $formattedBootTime" -ForegroundColor DarkGray
-
-        # Calculate uptime
-        $uptime = (Get-Date) - $bootTime
-
-        # Uptime in days, hours, minutes, and seconds
-        $days = $uptime.Days
-        $hours = $uptime.Hours
-        $minutes = $uptime.Minutes
-        $seconds = $uptime.Seconds
-
-        # Uptime output
-        Write-Host ("Uptime: {0} days, {1} hours, {2} minutes, {3} seconds" -f $days, $hours, $minutes, $seconds) -ForegroundColor Blue
-        
-
-    } catch {
-        Write-Error "An error occurred while retrieving system uptime."
+    $boot = if (Get-Command Get-Uptime -ErrorAction SilentlyContinue) {
+        Get-Uptime -Since
+    } else {
+        (Get-CimInstance -ClassName Win32_OperatingSystem).LastBootUpTime
     }
+
+    (Get-Date) - $boot | Select-Object Days, Hours, Minutes, Seconds
 }
 
 function reload-profile {
     & $profile
 }
 
-function unzip ($file) {
-    Write-Output("Extracting", $file, "to", $pwd)
-    $fullFile = Get-ChildItem -Path $pwd -Filter $file | ForEach-Object { $_.FullName }
-    Expand-Archive -Path $fullFile -DestinationPath $pwd
+function unzip {
+    param([Parameter(Mandatory)][string]$File)
+
+    if (-not (Test-Path -Path $File -PathType Leaf)) {
+        Write-Error "File not found: $File"
+        return
+    }
+
+    Expand-Archive -Path $File -DestinationPath (Get-Location) -Force
 }
+
 function hb {
     if ($args.Length -eq 0) {
         Write-Error "No file path specified."
@@ -484,210 +499,284 @@ function hb {
     }
 }
 
-function grep($regex, $dir) {
-    if ( $dir ) {
-        Get-ChildItem $dir | select-string $regex
-        return
+function grep {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory, Position = 0)][string]$Pattern,
+        [Parameter(Position = 1)][string]$Path,
+        [Parameter(ValueFromPipeline)][object]$InputObject
+    )
+
+    begin {
+        $pipelineInput = [System.Collections.Generic.List[object]]::new()
     }
-    $input | select-string $regex
+
+    process {
+        if ($PSBoundParameters.ContainsKey('InputObject')) {
+            $pipelineInput.Add($InputObject)
+        }
+    }
+
+    end {
+        if ($Path) {
+            Get-ChildItem -Path $Path -Recurse -File -ErrorAction SilentlyContinue | Select-String -Pattern $Pattern
+        } elseif ($pipelineInput.Count -gt 0) {
+            $pipelineInput | Select-String -Pattern $Pattern
+        } else {
+            Write-Error 'Usage: grep <pattern> [path] or pipe input to grep'
+        }
+    }
 }
 
-function df {
-    get-volume
+
+function df { Get-Volume }
+
+
+function sed {
+    param(
+        [Parameter(Mandatory)][string]$File,
+        [Parameter(Mandatory)][string]$Find,
+        [Parameter(Mandatory)][string]$Replace
+    )
+
+    (Get-Content -Path $File).Replace($Find, $Replace) | Set-Content -Path $File
 }
 
-function sed($file, $find, $replace) {
-    (Get-Content $file).replace("$find", $replace) | Set-Content $file
+
+function which {
+    param([Parameter(Mandatory)][string]$Name)
+    Get-Command -Name $Name | Select-Object -ExpandProperty Definition
 }
 
-function which($name) {
-    Get-Command $name | Select-Object -ExpandProperty Definition
+function export {
+    param(
+        [Parameter(Mandatory)][string]$Name,
+        [Parameter(Mandatory)][string]$Value
+    )
+    Set-Item -Path "env:$Name" -Value $Value -Force
 }
 
-function export($name, $value) {
-    set-item -force -path "env:$name" -value $value;
+function pkill {
+    param([Parameter(Mandatory)][string]$Name)
+    Get-Process -Name $Name -ErrorAction SilentlyContinue | Stop-Process -Force
 }
 
-function pkill($name) {
-    Get-Process $name -ErrorAction SilentlyContinue | Stop-Process
-}
 
-function pgrep($name) {
-    Get-Process $name
+function pgrep {
+    param([Parameter(Mandatory)][string]$Name)
+    Get-Process -Name $Name -ErrorAction SilentlyContinue
 }
 
 function head {
-  param($Path, $n = 10)
-  Get-Content $Path -Head $n
+    param([Parameter(Mandatory)][string]$Path, [int]$n = 10)
+    Get-Content -Path $Path -Head $n
 }
 
 function tail {
-  param($Path, $n = 10, [switch]$f = $false)
-  Get-Content $Path -Tail $n -Wait:$f
+    param([Parameter(Mandatory)][string]$Path, [int]$n = 10, [switch]$f)
+    Get-Content -Path $Path -Tail $n -Wait:$f
 }
 
-# Quick File Creation
-function nf { param($name) New-Item -ItemType "file" -Path . -Name $name }
+function nf {
+    param([Parameter(Mandatory)][string]$Name)
+    New-Item -ItemType File -Path . -Name $Name -Force | Out-Null
+}
 
-# Directory Management
-function mkcd { param($dir) mkdir $dir -Force; Set-Location $dir }
+function trash {
+    param([Parameter(Mandatory)][string]$Path)
 
-function trash($path) {
-    $fullPath = (Resolve-Path -Path $path).Path
+    $resolvedPath = Resolve-Path -LiteralPath $Path -ErrorAction SilentlyContinue
+    if (-not $resolvedPath) {
+        Write-Error "Item not found: $Path"
+        return
+    }
 
-    if (Test-Path $fullPath) {
-        $item = Get-Item $fullPath
-
-        if ($item.PSIsContainer) {
-          # Handle directory
-            $parentPath = $item.Parent.FullName
-        } else {
-            # Handle file
-            $parentPath = $item.DirectoryName
-        }
-
-        $shell = New-Object -ComObject 'Shell.Application'
-        $shellItem = $shell.NameSpace($parentPath).ParseName($item.Name)
-
-        if ($item) {
-            $shellItem.InvokeVerb('delete')
-            Write-Host "Item '$fullPath' has been moved to the Recycle Bin."
-        } else {
-            Write-Host "Error: Could not find the item '$fullPath' to trash."
-        }
+    $fullPath = $resolvedPath.ProviderPath
+    $item = Get-Item -LiteralPath $fullPath
+    $parentPath = if ($item.PSIsContainer) {
+        if ($item.Parent) { $item.Parent.FullName } else { Split-Path -Path $item.FullName -Parent }
     } else {
-        Write-Host "Error: Item '$fullPath' does not exist."
+        $item.DirectoryName
+    }
+
+    if ([string]::IsNullOrWhiteSpace($parentPath)) {
+        Write-Error "Cannot move root path to Recycle Bin: $fullPath"
+        return
+    }
+
+    $shell = New-Object -ComObject 'Shell.Application'
+    $shellFolder = $shell.NameSpace($parentPath)
+    $shellItem = if ($shellFolder) { $shellFolder.ParseName($item.Name) } else { $null }
+
+    if ($shellItem) {
+        $shellItem.InvokeVerb('delete')
+    } else {
+        Write-Error "Could not move item to Recycle Bin: $fullPath"
     }
 }
 
 ### Quality of Life Aliases
 
-# Navigation Shortcuts
-function docs { Set-Location -Path $HOME\Documents }
+function docs {
+    Set-Location -Path ([Environment]::GetFolderPath('MyDocuments'))
+}
 
-function dtop { Set-Location -Path $HOME\Desktop }
+function dtop {
+    Set-Location -Path ([Environment]::GetFolderPath('Desktop'))
+}
 
-# Quick Access to Editing the Profile
-function ep { vim $PROFILE }
-
-# Simplified Process Management
-function k9 { Stop-Process -Name $args[0] }
-
-# Enhanced Listing
-function la { Get-ChildItem -Path . -Force | Format-Table -AutoSize }
-function ll { Get-ChildItem -Path . -Force -Hidden | Format-Table -AutoSize }
-
-# Git Shortcuts
+function k9 { param([Parameter(Mandatory)][string]$Name) pkill $Name }
+function la { Get-ChildItem | Format-Table -AutoSize }
+function ll { Get-ChildItem -Force | Format-Table -AutoSize }
 function gs { git status }
-
 function ga { git add . }
+function gc { git commit -m ($args -join ' ') }
+function gpush { git push @args }
+function gpull { git pull @args }
+function gcl { git clone @args }
 
-function gc { param($m) git commit -m "$m" }
-
-function gp { git push }
-
-function g { __zoxide_z github }
-
-function gcl { git clone "$args" }
+function g {
+    if (Get-Command __zoxide_z -ErrorAction SilentlyContinue) {
+        __zoxide_z github
+    } elseif (Test-Path -Path "$HOME\github") {
+        Set-Location "$HOME\github"
+    }
+}
 
 function gcom {
     git add .
-    git commit -m "$args"
+    git commit -m ($args -join ' ')
 }
+
 function lazyg {
     git add .
-    git commit -m "$args"
+    git commit -m ($args -join ' ')
     git push
 }
 
-# Quick Access to System Information
 function sysinfo { Get-ComputerInfo }
 
-# Networking Utilities
 function flushdns {
-	Clear-DnsClientCache
-	Write-Host "DNS has been flushed"
+    Clear-DnsClientCache
+    Write-Host 'DNS has been flushed'
 }
 
-# Clipboard Utilities
-function cpy { Set-Clipboard $args[0] }
-
+function cpy { Set-Clipboard ($args -join ' ') }
 function pst { Get-Clipboard }
 
-# Enhanced PowerShell Experience
-# Enhanced PSReadLine Configuration
-$PSReadLineOptions = @{
-    EditMode = 'Windows'
-    HistoryNoDuplicates = $true
-    HistorySearchCursorMovesToEnd = $true
-    Colors = @{
-        Command = '#87CEEB'  # SkyBlue (pastel)
-        Parameter = '#98FB98'  # PaleGreen (pastel)
-        Operator = '#FFB6C1'  # LightPink (pastel)
-        Variable = '#DDA0DD'  # Plum (pastel)
-        String = '#FFDAB9'  # PeachPuff (pastel)
-        Number = '#B0E0E6'  # PowderBlue (pastel)
-        Type = '#F0E68C'  # Khaki (pastel)
-        Comment = '#D3D3D3'  # LightGray (pastel)
-        Keyword = '#8367c7'  # Violet (pastel)
-        Error = '#FF6347'  # Tomato (keeping it close to red for visibility)
+function Set-PSReadLineOptionsCompat {
+    [CmdletBinding(SupportsShouldProcess)]
+    param([Parameter(Mandatory)][hashtable]$Options)
+
+    $safeOptions = $Options.Clone()
+    if ($PSVersionTable.PSEdition -ne 'Core') {
+        $safeOptions.Remove('PredictionSource')
+        $safeOptions.Remove('PredictionViewStyle')
     }
-    PredictionSource = 'History'
-    PredictionViewStyle = 'ListView'
-    BellStyle = 'None'
-}
-Set-PSReadLineOption @PSReadLineOptions
 
-# Custom key handlers
-Set-PSReadLineKeyHandler -Key UpArrow -Function HistorySearchBackward
-Set-PSReadLineKeyHandler -Key DownArrow -Function HistorySearchForward
-Set-PSReadLineKeyHandler -Key Tab -Function MenuComplete
-Set-PSReadLineKeyHandler -Chord 'Ctrl+d' -Function DeleteChar
-Set-PSReadLineKeyHandler -Chord 'Ctrl+w' -Function BackwardDeleteWord
-Set-PSReadLineKeyHandler -Chord 'Alt+d' -Function DeleteWord
-Set-PSReadLineKeyHandler -Chord 'Ctrl+LeftArrow' -Function BackwardWord
-Set-PSReadLineKeyHandler -Chord 'Ctrl+RightArrow' -Function ForwardWord
-Set-PSReadLineKeyHandler -Chord 'Ctrl+z' -Function Undo
-Set-PSReadLineKeyHandler -Chord 'Ctrl+y' -Function Redo
-
-# Custom functions for PSReadLine
-Set-PSReadLineOption -AddToHistoryHandler {
-    param($line)
-    $sensitive = @('password', 'secret', 'token', 'apikey', 'connectionstring')
-    $hasSensitive = $sensitive | Where-Object { $line -match $_ }
-    return ($null -eq $hasSensitive)
+    if ($PSCmdlet.ShouldProcess('PSReadLine', 'Set PSReadLine options')) {
+        Set-PSReadLineOption @safeOptions
+    }
 }
 
-# Improved prediction settings
-Set-PSReadLineOption -PredictionSource HistoryAndPlugin
-Set-PSReadLineOption -MaximumHistoryCount 10000
+function Set-PredictionSource {
+    [CmdletBinding(SupportsShouldProcess)]
+    param()
 
-# Custom completion for common commands
-$scriptblock = {
-    param($wordToComplete, $commandAst, $cursorPosition)
-    $customCompletions = @{
-        'git' = @('status', 'add', 'commit', 'push', 'pull', 'clone', 'checkout')
-        'npm' = @('install', 'start', 'run', 'test', 'build')
-        'deno' = @('run', 'compile', 'bundle', 'test', 'lint', 'fmt', 'cache', 'info', 'doc', 'upgrade')
+    if (Get-Command -Name 'Set-PredictionSource_Override' -ErrorAction SilentlyContinue) {
+        Set-PredictionSource_Override
+        return
     }
-    
-    $command = $commandAst.CommandElements[0].Value
-    if ($customCompletions.ContainsKey($command)) {
-        $customCompletions[$command] | Where-Object { $_ -like "$wordToComplete*" } | ForEach-Object {
-            [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
+
+    if ($PSCmdlet.ShouldProcess('PSReadLine', 'Set prediction source')) {
+        if ($PSVersionTable.PSEdition -eq 'Core') {
+            Set-PSReadLineOption -PredictionSource HistoryAndPlugin
+        }
+
+        Set-PSReadLineOption -MaximumHistoryCount 10000
+    }
+}
+
+function Initialize-PSReadLine {
+    if (-not $isInteractiveShell -or -not (Get-Module -ListAvailable -Name PSReadLine)) {
+        return
+    }
+
+    $options = @{
+        EditMode                    = 'Windows'
+        HistoryNoDuplicates        = $true
+        HistorySearchCursorMovesToEnd = $true
+        PredictionSource           = 'History'
+        PredictionViewStyle        = 'ListView'
+        BellStyle                  = 'None'
+        Colors                     = @{
+            Command   = '#87CEEB'
+            Parameter = '#98FB98'
+            Operator  = '#FFB6C1'
+            Variable  = '#DDA0DD'
+            String    = '#FFDAB9'
+            Number    = '#B0E0E6'
+            Type      = '#F0E68C'
+            Comment   = '#D3D3D3'
+            Keyword   = '#8367c7'
+            Error     = '#FF6347'
+        }
+    }
+
+    Set-PSReadLineOptionsCompat -Options $options
+    Set-PSReadLineKeyHandler -Key UpArrow -Function HistorySearchBackward
+    Set-PSReadLineKeyHandler -Key DownArrow -Function HistorySearchForward
+    Set-PSReadLineKeyHandler -Key Tab -Function MenuComplete
+    Set-PSReadLineKeyHandler -Chord 'Ctrl+d' -Function DeleteChar
+    Set-PSReadLineKeyHandler -Chord 'Ctrl+w' -Function BackwardDeleteWord
+    Set-PSReadLineKeyHandler -Chord 'Alt+d' -Function DeleteWord
+    Set-PSReadLineKeyHandler -Chord 'Ctrl+LeftArrow' -Function BackwardWord
+    Set-PSReadLineKeyHandler -Chord 'Ctrl+RightArrow' -Function ForwardWord
+    Set-PSReadLineKeyHandler -Chord 'Ctrl+z' -Function Undo
+    Set-PSReadLineKeyHandler -Chord 'Ctrl+y' -Function Redo
+
+    Set-PSReadLineOption -AddToHistoryHandler {
+        param([string]$line)
+        $line -notmatch '(?i)(password|secret|token|apikey|connectionstring)'
+    }
+
+    Set-PredictionSource
+}
+
+function Register-CustomCompletion {
+    if (-not $isInteractiveShell) {
+        return
+    }
+
+    $completionMap = @{
+        git  = @('status', 'add', 'commit', 'push', 'pull', 'clone', 'checkout')
+        npm  = @('install', 'start', 'run', 'test', 'build')
+        deno = @('run', 'compile', 'bundle', 'test', 'lint', 'fmt', 'cache', 'info', 'doc', 'upgrade')
+    }
+
+    Register-ArgumentCompleter -Native -CommandName git, npm, deno -ScriptBlock {
+        param($wordToComplete, $commandAst, $cursorPosition)
+        $null = $cursorPosition
+        $completionWord = $wordToComplete
+        $map = $completionMap
+        $command = $commandAst.CommandElements[0].Value
+        if ($map.ContainsKey($command)) {
+            $map[$command] |
+                Where-Object { $_ -like "$completionWord*" } |
+                ForEach-Object { [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_) }
+        }
+    }.GetNewClosure()
+
+    if (Test-Command dotnet) {
+        Register-ArgumentCompleter -Native -CommandName dotnet -ScriptBlock {
+            param($wordToComplete, $commandAst, $cursorPosition)
+            $null = $wordToComplete
+            dotnet complete --position $cursorPosition $commandAst.ToString() |
+                ForEach-Object { [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_) }
         }
     }
 }
-Register-ArgumentCompleter -Native -CommandName git, npm, deno -ScriptBlock $scriptblock
 
-$scriptblock = {
-    param($wordToComplete, $commandAst, $cursorPosition)
-    dotnet complete --position $cursorPosition $commandAst.ToString() |
-        ForEach-Object {
-            [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
-        }
-}
-Register-ArgumentCompleter -Native -CommandName dotnet -ScriptBlock $scriptblock
 
 # Get theme from profile.ps1 or use a default theme
 function Get-Theme {
